@@ -127,3 +127,9 @@ export async function updateJobStatus(jobId, status) {
 
   return res.json();
 }
+
+export async function fetchDashboardSummary() {
+  const res = await fetch(`${API_BASE}/dashboard/summary`);
+  if (!res.ok) throw new Error("Failed to fetch dashboard summary");
+  return res.json();
+}

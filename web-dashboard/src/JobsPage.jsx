@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+
 import {
   fetchJobs,
   updateJobStatus,
@@ -15,6 +17,8 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  const [searchParams] = useSearchParams();
 
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -35,6 +39,20 @@ export default function JobsPage() {
     }
   }
 
+  useEffect(() => {
+  const jobIdParam = searchParams.get("jobId");
+  if (!jobIdParam) return;
+  if (!jobs || jobs.length === 0) return;
+
+  const id = parseInt(jobIdParam, 10);
+  if (isNaN(id)) return;
+
+  const target = jobs.find((j) => j.id === id);
+  if (target) {
+    setEditingJob(target);
+    // optional: if you have a ref to the jobs table, you could scroll into view
+  }
+}, [searchParams, jobs, setEditingJob]);
   useEffect(() => {
     loadJobs();
   }, []);
