@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DashboardSummar {
+public class DashboardSummary {
 
     private long totalDrivers;
     private long totalTrucks;
