@@ -35,7 +35,7 @@ public class TruckController {
         return truckRepository.save(truck);
     }
 
-    @PostMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Truck> updateTruck(@PathVariable Integer id, @RequestBody Truck updated){
         return truckRepository.findById(id)
                 .map(existing -> {

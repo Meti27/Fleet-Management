@@ -30,6 +30,9 @@ public class Driver {
     @Column(length = 20)
     private String status;
 
+    @Column(length = 100)
+    private String licenseNumber;
+
     private LocalDateTime createdAt;
 
     @PrePersist

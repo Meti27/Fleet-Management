@@ -133,3 +133,55 @@ export async function fetchDashboardSummary() {
   if (!res.ok) throw new Error("Failed to fetch dashboard summary");
   return res.json();
 }
+
+export async function updateDriver(driverId, driverData) {
+  const res = await fetch(`${API_BASE}/drivers/${driverId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(driverData),
+  });
+
+  if (!res.ok) {
+    await handleError(res, "Failed to update driver");
+  }
+
+  return res.json();
+}
+
+export async function deleteDriver(driverId) {
+  const res = await fetch(`${API_BASE}/drivers/${driverId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    await handleError(res, "Failed to delete driver");
+  }
+
+  return true;
+}
+
+export async function updateTruck(truckId, truckData) {
+  const res = await fetch(`${API_BASE}/trucks/${truckId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(truckData),
+  });
+
+  if (!res.ok) {
+    await handleError(res, "Failed to update truck");
+  }
+
+  return res.json();
+}
+
+export async function deleteTruck(truckId) {
+  const res = await fetch(`${API_BASE}/trucks/${truckId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    await handleError(res, "Failed to delete truck");
+  }
+
+  return true;
+}

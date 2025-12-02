@@ -35,7 +35,7 @@ public class DriverController {
         return driverRepository.save(driver);
     }
 
-    @PostMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Driver> updateDriver(
             @PathVariable Integer id,
             @RequestBody Driver updated
@@ -46,6 +46,7 @@ public class DriverController {
                     existing.setPhone(updated.getPhone());
                     existing.setEmail(updated.getEmail());
                     existing.setStatus(updated.getStatus());
+                    existing.setLicenseNumber(updated.getLicenseNumber());
                     return ResponseEntity.ok(driverRepository.save(existing));
                 })
                 .orElse(ResponseEntity.notFound().build());
