@@ -1,0 +1,12 @@
+# Node
+web-dashboard/node_modules
+web-dashboard/dist
+
+# Java / Maven
+backend/target
+*.log
+
+# OS
+.DS_Store
+.idea
+.vscode
