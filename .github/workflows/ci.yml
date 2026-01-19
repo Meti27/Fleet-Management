@@ -38,7 +38,7 @@ jobs:
       DB_URL: jdbc:mariadb://127.0.0.1:3306/fleetdb
       DB_USER: fleet_user
       DB_PASS: Random0027
-      SECURITY_JWT_SECRET: ci_dummy_secret_for_tests
+      SECURITY_JWT_SECRET: ci_dummy_secret_for_tests_please_make_this_longer_32_chars_min
 
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,8 @@ jobs:
           cache: maven
 
       - name: Build & test
-        run: mvn -B clean test -Dsecurity.jwt.secret=ci_dummy_secret_for_tests
+        run: mvn -B clean test -Dsecurity.jwt.secret=ci_dummy_secret_for_tests_please_make_this_longer_32_chars_min
+
 
 
   web-dashboard:
