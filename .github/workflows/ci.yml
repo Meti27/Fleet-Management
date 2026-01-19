@@ -38,6 +38,7 @@ jobs:
       DB_URL: jdbc:mariadb://127.0.0.1:3306/fleetdb
       DB_USER: fleet_user
       DB_PASS: Random0027
+      JWT_SECRET: Meti@0027
 
     steps:
       - uses: actions/checkout@v4
