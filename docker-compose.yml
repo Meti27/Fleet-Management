@@ -1,0 +1,40 @@
+services:
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: fleetdb
+      MARIADB_USER: fleet_user
+      MARIADB_PASSWORD: Random0027
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:mariadb://db:3306/fleetdb
+      DB_USER: fleet_user
+      DB_PASS: Random0027
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web-dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  dbdata:

@@ -1,60 +1,71 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { login as apiLogin } from "./api.js"; // IMPORTANT: adjust path if api.js is in ./api/api.js etc.
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null); // e.g. { username: "admin" }
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("fleet_admin_auth");
-    if (stored) {
+    const token = localStorage.getItem("token");
+
+    if (stored && token) {
       try {
         const parsed = JSON.parse(stored);
         if (parsed?.isAuthenticated) {
           setIsAuthenticated(true);
           setUser(parsed.user || null);
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
   }, []);
 
-  function login(username, password) {
-    // 🔐 DEMO CREDENTIALS - change if you want
-    const DEMO_USER = "Anrra";
-    const DEMO_PASS = "Anrra@123";
+  async function login(username, password) {
+    try {
+      const data = await apiLogin(username, password);
 
-    if (username === DEMO_USER && password === DEMO_PASS) {
+      const token = data.token;
+      if (!token) {
+        return { success: false, message: "Login response missing token" };
+      }
+
+      const userObj = { username: data.username, role: data.role };
+
+      localStorage.setItem("token", token);
+
       const authState = {
         isAuthenticated: true,
-        user: { username },
+        user: userObj,
       };
-      setIsAuthenticated(true);
-      setUser(authState.user);
-      localStorage.setItem("fleet_admin_auth", JSON.stringify(authState));
-      return { success: true };
-    }
 
-    return { success: false, message: "Invalid username or password" };
+      setIsAuthenticated(true);
+      setUser(userObj);
+      localStorage.setItem("fleet_admin_auth", JSON.stringify(authState));
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err?.message || "Login failed" };
+    }
   }
 
   function logout() {
     setIsAuthenticated(false);
     setUser(null);
     localStorage.removeItem("fleet_admin_auth");
+    localStorage.removeItem("token");
   }
 
-  const value = { isAuthenticated, user, login, logout };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }

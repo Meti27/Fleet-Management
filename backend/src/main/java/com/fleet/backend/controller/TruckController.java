@@ -4,6 +4,7 @@ import com.fleet.backend.entity.Truck;
 import com.fleet.backend.repository.TruckRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -17,11 +18,13 @@ public class TruckController {
         this.truckRepository = truckRepository;
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public List<Truck> getAllTrucks(){
         return truckRepository.findAll();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<Truck> getTruckById(@PathVariable Integer id){
         return truckRepository.findById(id)
@@ -29,12 +32,14 @@ public class TruckController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','DISPATCHER')")
     @PostMapping
     public Truck createTruck(@RequestBody Truck truck){
         truck.setId(null);
         return truckRepository.save(truck);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','DISPATCHER')")
     @PutMapping("/{id}")
     public ResponseEntity<Truck> updateTruck(@PathVariable Integer id, @RequestBody Truck updated){
         return truckRepository.findById(id)
@@ -48,6 +53,7 @@ public class TruckController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','DISPATCHER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTruck(@PathVariable Integer id){
         if(!truckRepository.existsById(id)){

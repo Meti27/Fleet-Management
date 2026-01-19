@@ -1,4 +1,5 @@
 package com.fleet.backend.repository;
+
 import com.fleet.backend.entity.Job;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -32,7 +33,7 @@ public interface JobRepository extends JpaRepository<Job, Integer> {
     """)
     List<Job> findConflictingJobsForTruck(Integer truckId,
                                           Integer jobId,
+                                          List<String> activeStatuses,
                                           LocalDateTime newPickup,
                                           LocalDateTime newDropoff);
-
 }

@@ -4,6 +4,7 @@ import com.fleet.backend.entity.Driver;
 import com.fleet.backend.repository.DriverRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -16,11 +17,13 @@ public class DriverController {
         this.driverRepository = driverRepository;
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public List<Driver> getAllDrivers(){
         return driverRepository.findAll();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<Driver> getDriverById(@PathVariable Integer id){
         return driverRepository.findById(id)
@@ -28,6 +31,7 @@ public class DriverController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','DISPATCHER')")
     @PostMapping
     public Driver createDriver(@RequestBody Driver driver) {
         // id, createdAt, status handled automatically
@@ -35,6 +39,7 @@ public class DriverController {
         return driverRepository.save(driver);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','DISPATCHER')")
     @PutMapping("/{id}")
     public ResponseEntity<Driver> updateDriver(
             @PathVariable Integer id,
@@ -52,6 +57,7 @@ public class DriverController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','DISPATCHER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDriver(@PathVariable Integer id){
         if(!driverRepository.existsById(id)){

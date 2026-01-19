@@ -16,16 +16,23 @@ export default function LoginPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    const result = login(form.username.trim(), form.password);
-    if (result.success) {
-      setError("");
+async function handleSubmit(e) {
+  e.preventDefault();
+  setError("");
+
+  try {
+    const result = await login(form.username.trim(), form.password);
+
+    if (result?.success) {
       navigate(from, { replace: true });
     } else {
-      setError(result.message || "Login failed");
+      setError(result?.message || "Login failed");
     }
+  } catch (err) {
+    setError(err?.message || "Login failed");
   }
+}
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
