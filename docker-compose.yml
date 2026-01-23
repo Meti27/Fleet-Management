@@ -22,7 +22,7 @@ services:
       DB_URL: jdbc:postgresql://db:5433/fleetdb
       DB_USER: fleet_user
       DB_PASS: Random0027
-      SECURITY_JWT_SECRET: 3f4428472b4b6250645367566b59703373367639792442264529482b4d625065
+      SECURITY_JWT_SECRET: 9a8c7b6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8c
     ports:
       - "8080:8080"
     depends_on:
