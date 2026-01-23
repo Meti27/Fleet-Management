@@ -1,17 +1,16 @@
 services:
   db:
-    image: mariadb:11
+    image: postgres:16
     environment:
-      MARIADB_DATABASE: fleetdb
-      MARIADB_USER: fleet_user
-      MARIADB_PASSWORD: Random0027
-      MARIADB_ROOT_PASSWORD: root
+      POSTGRES_DB: fleetdb
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: Random0027
     ports:
-      - "3307:3306"
+      - "5433:5432"
     volumes:
-      - dbdata:/var/lib/mysql
+      - dbdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD-SHELL", "pg_isready -U fleet_user -d fleetdb"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -20,9 +19,10 @@ services:
     build: ./backend
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_URL: jdbc:mariadb://db:3306/fleetdb
+      DB_URL: jdbc:postgresql://db:5433/fleetdb
       DB_USER: fleet_user
       DB_PASS: Random0027
+      SECURITY_JWT_SECRET: 3f4428472b4b6250645367566b59703373367639792442264529482b4d625065
     ports:
       - "8080:8080"
     depends_on:
