@@ -1,4 +1,5 @@
-const API_BASE = "/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE?.replace(/\/$/, "") || "/api";
 
 function getToken() {
   return localStorage.getItem("token");
@@ -28,7 +29,6 @@ async function handleError(res, fallbackMessage) {
   }
 }
 
-// ✅ NEW: Login endpoint (adjust path if needed)
 export async function login(username, password) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
@@ -36,13 +36,10 @@ export async function login(username, password) {
     body: JSON.stringify({ username, password }),
   });
 
-  if (!res.ok) {
-    await handleError(res, "Login failed");
-  }
-
-  // your backend returns {token, username, role}
+  if (!res.ok) await handleError(res, "Login failed");
   return res.json();
 }
+
 
 
 export async function fetchJobs() {
