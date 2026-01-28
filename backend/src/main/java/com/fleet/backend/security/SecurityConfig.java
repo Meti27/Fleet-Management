@@ -61,7 +61,8 @@ public class SecurityConfig {
 
         // ✅ put your Vercel domain(s) here
         config.setAllowedOrigins(List.of(
-                "https://fleet-management-puuybcxnf-meti27s-projects.vercel.app"
+                "https://fleet-management-puuybcxnf-meti27s-projects.vercel.app",
+                "fleet-management-sable.vercel.app"
                 // add your final prod domain too if you have it
                 // "https://your-domain.vercel.app"
         ));
