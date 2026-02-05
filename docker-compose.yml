@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: fleet_user
       POSTGRES_PASSWORD: Random0027
     ports:
-      - "5433:5432"
+      - "5433:5432"   # host 5433 -> container 5432
     volumes:
       - dbdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,16 +15,17 @@ services:
       timeout: 3s
       retries: 20
 
+
   backend:
     build: ./backend
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_URL: jdbc:postgresql://db:5433/fleetdb
+      DB_URL: jdbc:postgresql://db:5432/fleetdb   # ✅ FIXED HERE
       DB_USER: fleet_user
       DB_PASS: Random0027
       SECURITY_JWT_SECRET: 9a8c7b6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8c
     ports:
-      - "8080:8080"
+      - "8085:8087"
     depends_on:
       db:
         condition: service_healthy
