@@ -62,13 +62,14 @@ public class SecurityConfig {
         // ✅ put your Vercel domain(s) here
         config.setAllowedOrigins(List.of(
                 "https://fleet-management-puuybcxnf-meti27s-projects.vercel.app",
-                "https://fleet-management-sable.vercel.app"
+                "https://fleet-management-sable.vercel.app",
+                "https://fleet-management-*.vercel.app",
                 // add your final prod domain too if you have it
                 // "https://your-domain.vercel.app"
         ));
 
         config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization","Content-Type"));
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
 
