@@ -38,10 +38,7 @@ async function handleSubmit(e) {
     <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
       <div className="w-full max-w-sm bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-lg">
         <h1 className="text-xl font-semibold mb-1">Fleet Admin Login</h1>
-        <p className="text-xs text-slate-400 mb-4">
-          Demo credentials: <span className="font-mono">admin / admin123</span>
-        </p>
-
+       
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-xs mb-1 text-slate-300">
