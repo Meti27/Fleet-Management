@@ -1,15 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-
-import {
-  fetchJobs,
-  updateJobStatus,
-  deleteJob,
-} from "./api";
+import { fetchJobs, updateJobStatus, deleteJob } from "./api";
 import CreateJobForm from "./CreateJobForm";
 import EditJobPanel from "./EditJobPanel";
 import JobHistoryPanel from "./JobHistoryPanel";
-
 
 const STATUS_LABELS = ["OPEN", "ASSIGNED", "IN_PROGRESS", "DONE", "CANCELLED"];
 
@@ -17,14 +11,12 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
   const [searchParams] = useSearchParams();
-
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [search, setSearch] = useState("");
-
   const [editingJob, setEditingJob] = useState(null);
   const [historyJob, setHistoryJob] = useState(null);
+
   async function loadJobs() {
     try {
       setLoading(true);
@@ -40,22 +32,15 @@ export default function JobsPage() {
   }
 
   useEffect(() => {
-  const jobIdParam = searchParams.get("jobId");
-  if (!jobIdParam) return;
-  if (!jobs || jobs.length === 0) return;
+    const jobIdParam = searchParams.get("jobId");
+    if (!jobIdParam || !jobs.length) return;
+    const id = parseInt(jobIdParam, 10);
+    if (isNaN(id)) return;
+    const target = jobs.find((j) => j.id === id);
+    if (target) setEditingJob(target);
+  }, [searchParams, jobs]);
 
-  const id = parseInt(jobIdParam, 10);
-  if (isNaN(id)) return;
-
-  const target = jobs.find((j) => j.id === id);
-  if (target) {
-    setEditingJob(target);
-    // optional: if you have a ref to the jobs table, you could scroll into view
-  }
-}, [searchParams, jobs, setEditingJob]);
-  useEffect(() => {
-    loadJobs();
-  }, []);
+  useEffect(() => { loadJobs(); }, []);
 
   async function handleStatusChange(jobId, newStatus) {
     try {
@@ -68,17 +53,11 @@ export default function JobsPage() {
   }
 
   async function handleDelete(jobId) {
-    const confirmDelete = window.confirm(
-      `Delete job #${jobId}? This cannot be undone.`
-    );
-    if (!confirmDelete) return;
-
+    if (!window.confirm(`Delete job #${jobId}? This cannot be undone.`)) return;
     try {
       await deleteJob(jobId);
       await loadJobs();
-      if (editingJob && editingJob.id === jobId) {
-        setEditingJob(null);
-      }
+      if (editingJob?.id === jobId) setEditingJob(null);
     } catch (err) {
       console.error(err);
       alert("Failed to delete job");
@@ -87,232 +66,258 @@ export default function JobsPage() {
 
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
-      let ok = true;
-
-      if (statusFilter !== "ALL") {
-        ok = ok && job.status === statusFilter;
-      }
-
+      if (statusFilter !== "ALL" && job.status !== statusFilter) return false;
       if (search.trim()) {
         const term = search.toLowerCase();
         const driverName = job.driver?.name?.toLowerCase() || "";
         const truckPlate = job.truck?.plateNumber?.toLowerCase() || "";
         const title = job.title?.toLowerCase() || "";
-        ok =
-          ok &&
-          (driverName.includes(term) ||
-            truckPlate.includes(term) ||
-            title.includes(term));
+        if (!driverName.includes(term) && !truckPlate.includes(term) && !title.includes(term)) return false;
       }
-
-      return ok;
+      return true;
     });
   }, [jobs, statusFilter, search]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      {/* Create job form */}
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-6 space-y-5 sm:space-y-6">
+      {/* Create form */}
       <CreateJobForm onCreated={loadJobs} />
 
       {/* Filters */}
-      <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <h2 className="text-lg font-semibold">Jobs</h2>
-
-        <div className="flex flex-col md:flex-row gap-3 md:items-center">
+      <section className="space-y-3">
+        <h2 className="text-lg sm:text-xl font-semibold text-slate-50">Jobs</h2>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="p-2 rounded bg-slate-900 border border-slate-700 text-sm"
+            className={filterCls}
           >
             <option value="ALL">All statuses</option>
             {STATUS_LABELS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
-
           <input
             type="text"
             placeholder="Search by driver, plate, title..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="p-2 rounded bg-slate-900 border border-slate-700 text-sm w-full md:w-64"
+            className={`${filterCls} sm:flex-1`}
           />
         </div>
       </section>
 
-      {/* Table */}
+      {/* Jobs list */}
       {loading ? (
-        <div>Loading jobs...</div>
+        <p className="text-slate-400 text-sm">Loading jobs...</p>
       ) : error ? (
-        <div className="text-red-400">{error}</div>
+        <p className="text-red-400 text-sm">{error}</p>
       ) : filteredJobs.length === 0 ? (
-        <div className="text-slate-400">No jobs found.</div>
+        <p className="text-slate-400 text-sm">No jobs found.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-950">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-900">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  ID
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Title
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Pickup
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Dropoff
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Driver
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Truck
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Status
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Price €
-                </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-300">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredJobs.map((job) => (
-                <tr
-                  key={job.id}
-                  className="border-t border-slate-800 hover:bg-slate-900/60"
-                >
-                  <td className="px-3 py-2">{job.id}</td>
-                  <td className="px-3 py-2">{job.title}</td>
-                  <td className="px-3 py-2">{job.pickupLocation}</td>
-                  <td className="px-3 py-2">{job.dropoffLocation}</td>
-
-                  <td className="px-3 py-2">
-                    {job.driver ? (
-                      job.driver.name
-                    ) : (
-                      <span className="text-slate-500">Unassigned</span>
-                    )}
-                  </td>
-
-                  <td className="px-3 py-2">
-                    {job.truck ? (
-                      <>
-                        <span>{job.truck.plateNumber}</span>
-                        {job.truck.model && (
-                          <span className="text-xs text-slate-400 block">
-                            {job.truck.model}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-slate-500">Unassigned</span>
-                    )}
-                  </td>
-
-                  <td className="px-3 py-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
-                        job.status === "DONE"
-                          ? "bg-emerald-700/60 text-emerald-100"
-                          : job.status === "IN_PROGRESS"
-                          ? "bg-amber-700/60 text-amber-100"
-                          : job.status === "CANCELLED"
-                          ? "bg-red-700/60 text-red-100"
-                          : "bg-slate-800 text-slate-100"
-                      }`}
-                    >
-                      {job.status}
-                    </span>
-                  </td>
-
-                  <td className="px-3 py-2">
-                    {job.priceEur != null
-                      ? Number(job.priceEur).toFixed(2)
-                      : "-"}
-                  </td>
-
-                  <td className="px-3 py-2 space-x-1 whitespace-nowrap">
-                    {/* Status buttons */}
-                    {job.status !== "IN_PROGRESS" && job.status !== "DONE" && (
-                      <button
-                        onClick={() =>
-                          handleStatusChange(job.id, "IN_PROGRESS")
-                        }
-                        className="px-2 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700"
-                      >
-                        Start
-                      </button>
-                    )}
-                    {job.status !== "DONE" && job.status !== "CANCELLED" && (
-                      <button
-                        onClick={() => handleStatusChange(job.id, "DONE")}
-                        className="px-2 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        Done
-                      </button>
-                    )}
-                    {job.status !== "CANCELLED" && job.status !== "DONE" && (
-                      <button
-                        onClick={() =>
-                          handleStatusChange(job.id, "CANCELLED")
-                        }
-                        className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700"
-                      >
-                        Cancel
-                      </button>
-                    )}
-
-                    {/* Edit / Delete */}
-                    <button
-                      onClick={() => setEditingJob(job)}
-                      className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(job.id)}
-                      className="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700"
-                    >
-                      Del
-                    </button>
-                    <button
-                        onClick={() => setHistoryJob(job)}
-                        className="px-2 py-1 text-xs rounded bg-slate-600 hover:bg-slate-500"
-                        >
-                        History
-                        </button>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-700 bg-slate-950">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-900">
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="px-3 py-2.5 font-medium">ID</th>
+                  <th className="px-3 py-2.5 font-medium">Title</th>
+                  <th className="px-3 py-2.5 font-medium">Pickup</th>
+                  <th className="px-3 py-2.5 font-medium">Dropoff</th>
+                  <th className="px-3 py-2.5 font-medium">Driver</th>
+                  <th className="px-3 py-2.5 font-medium">Truck</th>
+                  <th className="px-3 py-2.5 font-medium">Status</th>
+                  <th className="px-3 py-2.5 font-medium">Price €</th>
+                  <th className="px-3 py-2.5 font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredJobs.map((job) => (
+                  <tr
+                    key={job.id}
+                    className={`border-t border-slate-800 transition-colors ${
+                      editingJob?.id === job.id ? "bg-slate-800/50" : "hover:bg-slate-900/60"
+                    }`}
+                  >
+                    <td className="px-3 py-2.5 text-slate-500 text-xs">#{job.id}</td>
+                    <td className="px-3 py-2.5 text-slate-100 font-medium">{job.title}</td>
+                    <td className="px-3 py-2.5 text-slate-300">{job.pickupLocation}</td>
+                    <td className="px-3 py-2.5 text-slate-300">{job.dropoffLocation}</td>
+                    <td className="px-3 py-2.5">
+                      {job.driver ? job.driver.name : <span className="text-slate-500">Unassigned</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {job.truck ? (
+                        <>
+                          <span className="text-slate-200">{job.truck.plateNumber}</span>
+                          {job.truck.model && (
+                            <span className="text-xs text-slate-400 block">{job.truck.model}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-slate-500">Unassigned</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <StatusBadge status={job.status} />
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-300">
+                      {job.priceEur != null ? `${Number(job.priceEur).toFixed(2)} €` : "—"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap gap-1">
+                        <JobActionButtons job={job} onStatus={handleStatusChange} onEdit={setEditingJob} onDelete={handleDelete} onHistory={setHistoryJob} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden flex flex-col gap-3">
+            {filteredJobs.map((job) => (
+              <div
+                key={job.id}
+                className={`border rounded-xl p-3.5 transition-colors ${
+                  editingJob?.id === job.id
+                    ? "border-blue-500/40 bg-slate-800/60"
+                    : "border-slate-700 bg-slate-900"
+                }`}
+              >
+                {/* Top: title + status */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-100 truncate">{job.title}</span>
+                      <span className="text-xs text-slate-500">#{job.id}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      {job.pickupLocation} → {job.dropoffLocation}
+                    </div>
+                  </div>
+                  <StatusBadge status={job.status} />
+                </div>
+
+                {/* Details grid */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mb-3">
+                  <div>
+                    <div className="text-slate-500 uppercase tracking-wide">Driver</div>
+                    <div className="text-slate-300">{job.driver?.name || "Unassigned"}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500 uppercase tracking-wide">Truck</div>
+                    <div className="text-slate-300">{job.truck?.plateNumber || "Unassigned"}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500 uppercase tracking-wide">Price</div>
+                    <div className="text-slate-300">
+                      {job.priceEur != null ? `${Number(job.priceEur).toFixed(2)} €` : "—"}
+                    </div>
+                  </div>
+                  {job.truck?.model && (
+                    <div>
+                      <div className="text-slate-500 uppercase tracking-wide">Model</div>
+                      <div className="text-slate-300">{job.truck.model}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
+                  <JobActionButtons job={job} onStatus={handleStatusChange} onEdit={setEditingJob} onDelete={handleDelete} onHistory={setHistoryJob} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {editingJob && (
         <EditJobPanel
           job={editingJob}
-          onSaved={() => {
-            setEditingJob(null);
-            loadJobs();
-          }}
+          onSaved={() => { setEditingJob(null); loadJobs(); }}
           onCancel={() => setEditingJob(null)}
         />
       )}
-            {historyJob && (
+      {historyJob && (
         <JobHistoryPanel
-            job={historyJob}
-            onClose={() => setHistoryJob(null)}
+          job={historyJob}
+          onClose={() => setHistoryJob(null)}
         />
-        )}
+      )}
     </div>
   );
 }
+
+// ---- Sub-components ----
+
+function StatusBadge({ status }) {
+  const cls =
+    status === "DONE" ? "bg-emerald-500/20 text-emerald-300" :
+    status === "IN_PROGRESS" ? "bg-amber-500/20 text-amber-300" :
+    status === "CANCELLED" ? "bg-red-500/20 text-red-300" :
+    status === "ASSIGNED" ? "bg-blue-500/20 text-blue-300" :
+    "bg-slate-800 text-slate-300";
+  return (
+    <span className={`inline-flex text-[11px] px-2 py-1 rounded-full whitespace-nowrap font-medium ${cls}`}>
+      {status}
+    </span>
+  );
+}
+
+function JobActionButtons({ job, onStatus, onEdit, onDelete, onHistory }) {
+  return (
+    <>
+      {job.status !== "IN_PROGRESS" && job.status !== "DONE" && job.status !== "CANCELLED" && (
+        <button
+          onClick={() => onStatus(job.id, "IN_PROGRESS")}
+          className="px-2.5 py-1 text-xs rounded-lg bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 font-medium transition-colors"
+        >
+          Start
+        </button>
+      )}
+      {job.status !== "DONE" && job.status !== "CANCELLED" && (
+        <button
+          onClick={() => onStatus(job.id, "DONE")}
+          className="px-2.5 py-1 text-xs rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 font-medium transition-colors"
+        >
+          Done
+        </button>
+      )}
+      {job.status !== "CANCELLED" && job.status !== "DONE" && (
+        <button
+          onClick={() => onStatus(job.id, "CANCELLED")}
+          className="px-2.5 py-1 text-xs rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 font-medium transition-colors"
+        >
+          Cancel
+        </button>
+      )}
+      <button
+        onClick={() => onEdit(job)}
+        className="px-2.5 py-1 text-xs rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium transition-colors"
+      >
+        Edit
+      </button>
+      <button
+        onClick={() => onHistory(job)}
+        className="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+      >
+        History
+      </button>
+      <button
+        onClick={() => onDelete(job.id)}
+        className="px-2.5 py-1 text-xs rounded-lg bg-red-900/30 hover:bg-red-900/50 text-red-400 font-medium transition-colors"
+      >
+        Delete
+      </button>
+    </>
+  );
+}
+
+// ---- constants ----
+
+const filterCls =
+  "px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors";
