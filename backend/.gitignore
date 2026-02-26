@@ -31,3 +31,5 @@ build/
 
 ### VS Code ###
 .vscode/
+# Don't commit prod seeder with hardcoded creds
+backend/src/main/java/com/fleet/backend/bootstrap/ProdUserSeeder.java
