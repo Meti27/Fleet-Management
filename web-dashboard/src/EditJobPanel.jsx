@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchDrivers, fetchTrucks, updateJob } from "./api";
+import { useT } from "./i18n";
 
 export default function EditJobPanel({ job, onSaved, onCancel }) {
+  const { t } = useT();
   const [drivers, setDrivers] = useState([]);
   const [trucks, setTrucks] = useState([]);
 
@@ -54,7 +56,7 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
       onSaved && onSaved();
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Error updating job");
+      alert(err instanceof Error ? err.message : t("jobs.errorUpdating"));
     } finally {
       setLoading(false);
     }
@@ -65,23 +67,23 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-slate-100">
-          Edit Job <span className="text-slate-400">#{job.id}</span>
+          {t("jobs.editJob")} <span className="text-slate-400">#{job.id}</span>
         </h3>
         <button
           type="button"
           onClick={onCancel}
           className="text-xs text-slate-400 hover:text-slate-200 transition-colors px-2 py-1 rounded hover:bg-slate-800"
         >
-          ✕ Close
+          ✕ {t("common.close")}
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3 text-sm">
         {/* Title */}
-        <Field label="Title">
+        <Field label={t("jobs.title")}>
           <input
             className={inputCls}
-            placeholder="Job title"
+            placeholder={t("jobs.jobTitlePlaceholder")}
             name="title"
             value={form.title}
             onChange={handleChange}
@@ -91,20 +93,20 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
 
         {/* Locations */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Pickup Location">
+          <Field label={t("jobs.pickupLocation")}>
             <input
               className={inputCls}
-              placeholder="City or address"
+              placeholder={t("jobs.locationPlaceholder")}
               name="pickupLocation"
               value={form.pickupLocation}
               onChange={handleChange}
               required
             />
           </Field>
-          <Field label="Dropoff Location">
+          <Field label={t("jobs.dropoffLocation")}>
             <input
               className={inputCls}
-              placeholder="City or address"
+              placeholder={t("jobs.locationPlaceholder")}
               name="dropoffLocation"
               value={form.dropoffLocation}
               onChange={handleChange}
@@ -115,7 +117,7 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
 
         {/* Times */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Pickup Time">
+          <Field label={t("jobs.pickupTime")}>
             <input
               type="datetime-local"
               className={inputCls}
@@ -124,7 +126,7 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
               onChange={handleChange}
             />
           </Field>
-          <Field label="Dropoff Time">
+          <Field label={t("jobs.dropoffTime")}>
             <input
               type="datetime-local"
               className={inputCls}
@@ -137,7 +139,7 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
 
         {/* Price + Status */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Price (EUR)">
+          <Field label={t("jobs.price")}>
             <input
               className={inputCls}
               placeholder="0.00"
@@ -146,48 +148,48 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
               onChange={handleChange}
             />
           </Field>
-          <Field label="Status">
+          <Field label={t("jobs.status")}>
             <select
               name="status"
               value={form.status}
               onChange={handleChange}
               className={inputCls}
             >
-              <option value="OPEN">OPEN</option>
-              <option value="ASSIGNED">ASSIGNED</option>
-              <option value="IN_PROGRESS">IN_PROGRESS</option>
-              <option value="DONE">DONE</option>
-              <option value="CANCELLED">CANCELLED</option>
+              <option value="OPEN">{t("status.OPEN")}</option>
+              <option value="ASSIGNED">{t("status.ASSIGNED")}</option>
+              <option value="IN_PROGRESS">{t("status.IN_PROGRESS")}</option>
+              <option value="DONE">{t("status.DONE")}</option>
+              <option value="CANCELLED">{t("status.CANCELLED")}</option>
             </select>
           </Field>
         </div>
 
         {/* Driver + Truck */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Driver">
+          <Field label={t("jobs.driver")}>
             <select
               name="driverId"
               value={form.driverId}
               onChange={handleChange}
               className={inputCls}
             >
-              <option value="">— No driver —</option>
+              <option value="">{t("jobs.noDriver")}</option>
               {drivers.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
           </Field>
-          <Field label="Truck">
+          <Field label={t("jobs.truck")}>
             <select
               name="truckId"
               value={form.truckId}
               onChange={handleChange}
               className={inputCls}
             >
-              <option value="">— No truck —</option>
-              {trucks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.plateNumber} — {t.model}
+              <option value="">{t("jobs.noTruck")}</option>
+              {trucks.map((tr) => (
+                <option key={tr.id} value={tr.id}>
+                  {tr.plateNumber} — {tr.model}
                 </option>
               ))}
             </select>
@@ -201,14 +203,14 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
             onClick={onCancel}
             className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition-colors"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="submit"
             disabled={loading}
             className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium disabled:opacity-50 transition-colors"
           >
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? t("common.saving") : t("common.saveChanges")}
           </button>
         </div>
       </form>

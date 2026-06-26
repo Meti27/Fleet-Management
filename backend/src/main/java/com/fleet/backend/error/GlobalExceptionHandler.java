@@ -61,6 +61,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body);
     }
 
+    // Method-security denials (@PreAuthorize) throw AccessDeniedException
+    // (incl. AuthorizationDeniedException) from inside the dispatcher, so they
+    // reach this advice rather than Spring Security's translation filter — map to 403,
+    // otherwise the generic handler below would turn them into 500.
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex,
+            HttpServletRequest request) {
+        HttpStatus status = HttpStatus.FORBIDDEN;
+
+        ApiError body = new ApiError(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                "You do not have permission to perform this action.",
+                request.getRequestURI()
+        );
+
+        return ResponseEntity.status(status).body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;

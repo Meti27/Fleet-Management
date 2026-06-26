@@ -49,6 +49,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  // ✅ preflight
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/health").permitAll()              // ✅ public health check
+                        .requestMatchers("/ws/**").permitAll()                   // ✅ STOMP handshake; CONNECT is JWT-authed in StompAuthChannelInterceptor
                         .anyRequest().authenticated()
                 );
 
@@ -61,11 +63,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // ✅ Use patterns so Vercel preview URLs work
+        // Patterns so Vercel preview URLs and any local-dev port work.
+        // localhost:* / 127.0.0.1:* cover the Vite dev server (5173), the
+        // docker-compose frontend (3000), and direct-to-backend testing.
         config.setAllowedOriginPatterns(List.of(
                 "https://fleet-management-sable.vercel.app",
                 "https://fleet-management-*.vercel.app",
-                "http://localhost:5173"
+                "http://localhost:[*]",
+                "http://127.0.0.1:[*]"
         ));
 
         config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));

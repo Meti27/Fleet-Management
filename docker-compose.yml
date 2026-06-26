@@ -25,7 +25,7 @@ services:
       DB_PASS: Random0027
       SECURITY_JWT_SECRET: 9a8c7b6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8c
     ports:
-      - "8085:8087"
+      - "8085:8080"   # host 8085 -> container 8080 (Spring Boot default port)
     depends_on:
       db:
         condition: service_healthy

@@ -1,18 +1,22 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { useT } from "./i18n";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const NAV_LINKS = [
-  { to: "/", label: "Dashboard", icon: DashIcon },
-  { to: "/jobs", label: "Jobs", icon: JobsIcon },
-  { to: "/drivers", label: "Drivers", icon: DriversIcon },
-  { to: "/trucks", label: "Trucks", icon: TrucksIcon },
+  { to: "/", key: "dashboard", icon: DashIcon },
+  { to: "/jobs", key: "jobs", icon: JobsIcon },
+  { to: "/drivers", key: "drivers", icon: DriversIcon },
+  { to: "/trucks", key: "trucks", icon: TrucksIcon },
+  { to: "/map", key: "map", icon: MapIcon },
 ];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const { t } = useT();
 
   // Close menu on route change or outside click
   useEffect(() => {
@@ -51,7 +55,7 @@ export default function Navbar() {
 
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(({ to, label, icon: Icon }) => (
+            {NAV_LINKS.map(({ to, key, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -65,13 +69,14 @@ export default function Navbar() {
                 }
               >
                 <Icon />
-                {label}
+                {t(`nav.${key}`)}
               </NavLink>
             ))}
           </div>
 
-          {/* Desktop: user + logout */}
+          {/* Desktop: language + user + logout */}
           <div className="hidden md:flex items-center gap-3 ml-3 pl-3 border-l border-slate-700">
+            <LanguageSwitcher />
             {user?.username && (
               <span className="text-xs text-slate-400">{user.username}</span>
             )}
@@ -79,7 +84,7 @@ export default function Navbar() {
               onClick={logout}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 transition-colors"
             >
-              Logout
+              {t("nav.logout")}
             </button>
           </div>
 
@@ -126,7 +131,7 @@ export default function Navbar() {
         }`}
       >
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-1">
-          {NAV_LINKS.map(({ to, label, icon: Icon }) => (
+          {NAV_LINKS.map(({ to, key, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -143,9 +148,15 @@ export default function Navbar() {
               <span className="w-5 h-5 flex items-center justify-center text-amber-400">
                 <Icon />
               </span>
-              {label}
+              {t(`nav.${key}`)}
             </NavLink>
           ))}
+
+          {/* Mobile: language */}
+          <div className="mt-2 pt-3 border-t border-slate-800 flex items-center justify-between px-4">
+            <span className="text-xs text-slate-500">{t("nav.language")}</span>
+            <LanguageSwitcher />
+          </div>
 
           {/* Mobile: user + logout */}
           <div className="mt-1 pt-3 border-t border-slate-800 flex items-center justify-between px-4 pb-1">
@@ -156,7 +167,7 @@ export default function Navbar() {
               onClick={() => { logout(); setOpen(false); }}
               className="text-xs px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 transition-colors ml-auto"
             >
-              Logout
+              {t("nav.logout")}
             </button>
           </div>
         </div>
@@ -215,6 +226,16 @@ function TrucksIcon() {
       <path d="M16 8h4l3 3v5h-7V8z" />
       <circle cx="5.5" cy="18.5" r="2.5" />
       <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  );
+}
+
+function MapIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+      <line x1="8" y1="2" x2="8" y2="18" />
+      <line x1="16" y1="6" x2="16" y2="22" />
     </svg>
   );
 }

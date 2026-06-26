@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/trucks")
-@CrossOrigin(origins = "*")
 public class TruckController {
 
     private final TruckRepository truckRepository;
@@ -47,6 +46,7 @@ public class TruckController {
                     existing.setPlateNumber(updated.getPlateNumber());
                     existing.setModel(updated.getModel());
                     existing.setCapacityTons(updated.getCapacityTons());
+                    existing.setFuelConsumptionL100km(updated.getFuelConsumptionL100km());
                     existing.setStatus(updated.getStatus());
                     return ResponseEntity.ok(truckRepository.save(existing));
                 })

@@ -4,10 +4,12 @@ import { fetchJobs, updateJobStatus, deleteJob } from "./api";
 import CreateJobForm from "./CreateJobForm";
 import EditJobPanel from "./EditJobPanel";
 import JobHistoryPanel from "./JobHistoryPanel";
+import { useT } from "./i18n";
 
 const STATUS_LABELS = ["OPEN", "ASSIGNED", "IN_PROGRESS", "DONE", "CANCELLED"];
 
 export default function JobsPage() {
+  const { t } = useT();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -25,7 +27,7 @@ export default function JobsPage() {
       setError("");
     } catch (err) {
       console.error(err);
-      setError("Failed to load jobs");
+      setError(t("jobs.failedLoad"));
     } finally {
       setLoading(false);
     }
@@ -48,19 +50,19 @@ export default function JobsPage() {
       await loadJobs();
     } catch (err) {
       console.error(err);
-      alert("Failed to update status");
+      alert(t("jobs.failedStatus"));
     }
   }
 
   async function handleDelete(jobId) {
-    if (!window.confirm(`Delete job #${jobId}? This cannot be undone.`)) return;
+    if (!window.confirm(t("jobs.deleteConfirm", { id: jobId }))) return;
     try {
       await deleteJob(jobId);
       await loadJobs();
       if (editingJob?.id === jobId) setEditingJob(null);
     } catch (err) {
       console.error(err);
-      alert("Failed to delete job");
+      alert(t("jobs.failedDelete"));
     }
   }
 
@@ -85,21 +87,21 @@ export default function JobsPage() {
 
       {/* Filters */}
       <section className="space-y-3">
-        <h2 className="text-lg sm:text-xl font-semibold text-slate-50">Jobs</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-slate-50">{t("jobs.heading")}</h2>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className={filterCls}
           >
-            <option value="ALL">All statuses</option>
+            <option value="ALL">{t("jobs.allStatuses")}</option>
             {STATUS_LABELS.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{t(`status.${s}`)}</option>
             ))}
           </select>
           <input
             type="text"
-            placeholder="Search by driver, plate, title..."
+            placeholder={t("jobs.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={`${filterCls} sm:flex-1`}
@@ -109,11 +111,11 @@ export default function JobsPage() {
 
       {/* Jobs list */}
       {loading ? (
-        <p className="text-slate-400 text-sm">Loading jobs...</p>
+        <p className="text-slate-400 text-sm">{t("jobs.loading")}</p>
       ) : error ? (
         <p className="text-red-400 text-sm">{error}</p>
       ) : filteredJobs.length === 0 ? (
-        <p className="text-slate-400 text-sm">No jobs found.</p>
+        <p className="text-slate-400 text-sm">{t("jobs.none")}</p>
       ) : (
         <>
           {/* Desktop table */}
@@ -121,15 +123,15 @@ export default function JobsPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-slate-900">
                 <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-3 py-2.5 font-medium">ID</th>
-                  <th className="px-3 py-2.5 font-medium">Title</th>
-                  <th className="px-3 py-2.5 font-medium">Pickup</th>
-                  <th className="px-3 py-2.5 font-medium">Dropoff</th>
-                  <th className="px-3 py-2.5 font-medium">Driver</th>
-                  <th className="px-3 py-2.5 font-medium">Truck</th>
-                  <th className="px-3 py-2.5 font-medium">Status</th>
-                  <th className="px-3 py-2.5 font-medium">Price €</th>
-                  <th className="px-3 py-2.5 font-medium">Actions</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.id")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.title")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.pickup")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.dropoff")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.driver")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.truck")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.status")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.priceCol")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,7 +147,7 @@ export default function JobsPage() {
                     <td className="px-3 py-2.5 text-slate-300">{job.pickupLocation}</td>
                     <td className="px-3 py-2.5 text-slate-300">{job.dropoffLocation}</td>
                     <td className="px-3 py-2.5">
-                      {job.driver ? job.driver.name : <span className="text-slate-500">Unassigned</span>}
+                      {job.driver ? job.driver.name : <span className="text-slate-500">{t("common.unassigned")}</span>}
                     </td>
                     <td className="px-3 py-2.5">
                       {job.truck ? (
@@ -156,7 +158,7 @@ export default function JobsPage() {
                           )}
                         </>
                       ) : (
-                        <span className="text-slate-500">Unassigned</span>
+                        <span className="text-slate-500">{t("common.unassigned")}</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5">
@@ -204,22 +206,22 @@ export default function JobsPage() {
                 {/* Details grid */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mb-3">
                   <div>
-                    <div className="text-slate-500 uppercase tracking-wide">Driver</div>
-                    <div className="text-slate-300">{job.driver?.name || "Unassigned"}</div>
+                    <div className="text-slate-500 uppercase tracking-wide">{t("jobs.driver")}</div>
+                    <div className="text-slate-300">{job.driver?.name || t("common.unassigned")}</div>
                   </div>
                   <div>
-                    <div className="text-slate-500 uppercase tracking-wide">Truck</div>
-                    <div className="text-slate-300">{job.truck?.plateNumber || "Unassigned"}</div>
+                    <div className="text-slate-500 uppercase tracking-wide">{t("jobs.truck")}</div>
+                    <div className="text-slate-300">{job.truck?.plateNumber || t("common.unassigned")}</div>
                   </div>
                   <div>
-                    <div className="text-slate-500 uppercase tracking-wide">Price</div>
+                    <div className="text-slate-500 uppercase tracking-wide">{t("jobs.price")}</div>
                     <div className="text-slate-300">
                       {job.priceEur != null ? `${Number(job.priceEur).toFixed(2)} €` : "—"}
                     </div>
                   </div>
                   {job.truck?.model && (
                     <div>
-                      <div className="text-slate-500 uppercase tracking-wide">Model</div>
+                      <div className="text-slate-500 uppercase tracking-wide">{t("jobs.model")}</div>
                       <div className="text-slate-300">{job.truck.model}</div>
                     </div>
                   )}
@@ -255,6 +257,7 @@ export default function JobsPage() {
 // ---- Sub-components ----
 
 function StatusBadge({ status }) {
+  const { t } = useT();
   const cls =
     status === "DONE" ? "bg-emerald-500/20 text-emerald-300" :
     status === "IN_PROGRESS" ? "bg-amber-500/20 text-amber-300" :
@@ -263,12 +266,13 @@ function StatusBadge({ status }) {
     "bg-slate-800 text-slate-300";
   return (
     <span className={`inline-flex text-[11px] px-2 py-1 rounded-full whitespace-nowrap font-medium ${cls}`}>
-      {status}
+      {t(`status.${status}`)}
     </span>
   );
 }
 
 function JobActionButtons({ job, onStatus, onEdit, onDelete, onHistory }) {
+  const { t } = useT();
   return (
     <>
       {job.status !== "IN_PROGRESS" && job.status !== "DONE" && job.status !== "CANCELLED" && (
@@ -276,7 +280,7 @@ function JobActionButtons({ job, onStatus, onEdit, onDelete, onHistory }) {
           onClick={() => onStatus(job.id, "IN_PROGRESS")}
           className="px-2.5 py-1 text-xs rounded-lg bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 font-medium transition-colors"
         >
-          Start
+          {t("jobs.start")}
         </button>
       )}
       {job.status !== "DONE" && job.status !== "CANCELLED" && (
@@ -284,7 +288,7 @@ function JobActionButtons({ job, onStatus, onEdit, onDelete, onHistory }) {
           onClick={() => onStatus(job.id, "DONE")}
           className="px-2.5 py-1 text-xs rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 font-medium transition-colors"
         >
-          Done
+          {t("jobs.done")}
         </button>
       )}
       {job.status !== "CANCELLED" && job.status !== "DONE" && (
@@ -292,26 +296,26 @@ function JobActionButtons({ job, onStatus, onEdit, onDelete, onHistory }) {
           onClick={() => onStatus(job.id, "CANCELLED")}
           className="px-2.5 py-1 text-xs rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 font-medium transition-colors"
         >
-          Cancel
+          {t("jobs.cancel")}
         </button>
       )}
       <button
         onClick={() => onEdit(job)}
         className="px-2.5 py-1 text-xs rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium transition-colors"
       >
-        Edit
+        {t("jobs.edit")}
       </button>
       <button
         onClick={() => onHistory(job)}
         className="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
       >
-        History
+        {t("jobs.history")}
       </button>
       <button
         onClick={() => onDelete(job.id)}
         className="px-2.5 py-1 text-xs rounded-lg bg-red-900/30 hover:bg-red-900/50 text-red-400 font-medium transition-colors"
       >
-        Delete
+        {t("jobs.delete")}
       </button>
     </>
   );

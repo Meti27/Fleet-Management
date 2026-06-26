@@ -10,3 +10,7 @@ backend/target
 .DS_Store
 .idea
 .vscode
+
+# Tooling artifacts
+.playwright-mcp/
+graphify-out/

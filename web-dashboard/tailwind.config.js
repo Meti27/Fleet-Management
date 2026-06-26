@@ -5,7 +5,13 @@ export default {
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      screens: {
+        // Extra-small breakpoint used across the dashboard (below Tailwind's
+        // default `sm` of 640px) for tighter phone layouts.
+        xs: "480px",
+      },
+    },
   },
   plugins: [],
 };

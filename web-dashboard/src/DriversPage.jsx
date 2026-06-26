@@ -5,8 +5,10 @@ import {
   updateDriver,
   deleteDriver,
 } from "./api";
+import { useT } from "./i18n";
 
 export default function DriversPage() {
+  const { t } = useT();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,7 +26,7 @@ export default function DriversPage() {
       setError("");
     } catch (err) {
       console.error(err);
-      setError("Failed to load drivers");
+      setError(t("drivers.failedLoad"));
     } finally {
       setLoading(false);
     }
@@ -64,25 +66,25 @@ export default function DriversPage() {
       startCreate();
     } catch (err) {
       console.error(err);
-      alert(err.message || "Failed to save driver");
+      alert(err.message || t("drivers.failedSave"));
     }
   }
 
   async function handleDelete(driverId) {
-    if (!window.confirm(`Delete driver #${driverId}? This cannot be undone.`)) return;
+    if (!window.confirm(t("drivers.deleteConfirm", { id: driverId }))) return;
     try {
       await deleteDriver(driverId);
       await loadDrivers();
       if (editingDriver?.id === driverId) startCreate();
     } catch (err) {
       console.error(err);
-      alert(err.message || "Failed to delete driver");
+      alert(err.message || t("drivers.failedDelete"));
     }
   }
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-6 space-y-5 sm:space-y-6">
-      <h1 className="text-xl sm:text-2xl font-semibold text-slate-50">Drivers</h1>
+      <h1 className="text-xl sm:text-2xl font-semibold text-slate-50">{t("drivers.heading")}</h1>
 
       {/* Form */}
       <form
@@ -92,7 +94,7 @@ export default function DriversPage() {
       >
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-slate-100">
-            {editingDriver ? `Edit Driver #${editingDriver.id}` : "Add Driver"}
+            {editingDriver ? t("drivers.editDriver", { id: editingDriver.id }) : t("drivers.addDriver")}
           </span>
           {editingDriver && (
             <button
@@ -100,38 +102,38 @@ export default function DriversPage() {
               onClick={startCreate}
               className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
             >
-              Cancel edit
+              {t("common.cancelEdit")}
             </button>
           )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Name">
+          <Field label={t("drivers.name")}>
             <input
               name="name"
               value={form.name}
               onChange={handleChange}
               className={inputCls}
-              placeholder="Full name"
+              placeholder={t("drivers.namePlaceholder")}
               required
             />
           </Field>
-          <Field label="Phone">
+          <Field label={t("drivers.phone")}>
             <input
               name="phone"
               value={form.phone}
               onChange={handleChange}
               className={inputCls}
-              placeholder="+1 555 000 0000"
+              placeholder="+389 70 000 000"
             />
           </Field>
-          <Field label="License No.">
+          <Field label={t("drivers.licenseNo")}>
             <input
               name="licenseNumber"
               value={form.licenseNumber}
               onChange={handleChange}
               className={inputCls}
-              placeholder="e.g. DL-12345"
+              placeholder={t("drivers.licensePlaceholder")}
             />
           </Field>
         </div>
@@ -140,18 +142,18 @@ export default function DriversPage() {
           type="submit"
           className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium transition-colors"
         >
-          {editingDriver ? "Save Changes" : "Create Driver"}
+          {editingDriver ? t("common.saveChanges") : t("drivers.createDriver")}
         </button>
       </form>
 
       {/* List */}
       <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 sm:p-5">
         {loading ? (
-          <p className="text-sm text-slate-400">Loading drivers...</p>
+          <p className="text-sm text-slate-400">{t("drivers.loading")}</p>
         ) : error ? (
           <p className="text-sm text-red-400">{error}</p>
         ) : drivers.length === 0 ? (
-          <p className="text-sm text-slate-400">No drivers yet.</p>
+          <p className="text-sm text-slate-400">{t("drivers.none")}</p>
         ) : (
           <>
             {/* Desktop table */}
@@ -159,11 +161,11 @@ export default function DriversPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-slate-400 border-b border-slate-700 text-xs uppercase tracking-wide">
-                    <th className="py-2 pr-3 font-medium">ID</th>
-                    <th className="py-2 px-3 font-medium">Name</th>
-                    <th className="py-2 px-3 font-medium">Phone</th>
-                    <th className="py-2 px-3 font-medium">License</th>
-                    <th className="py-2 pl-3 font-medium text-right">Actions</th>
+                    <th className="py-2 pr-3 font-medium">{t("trucks.id")}</th>
+                    <th className="py-2 px-3 font-medium">{t("drivers.name")}</th>
+                    <th className="py-2 px-3 font-medium">{t("drivers.phone")}</th>
+                    <th className="py-2 px-3 font-medium">{t("drivers.license")}</th>
+                    <th className="py-2 pl-3 font-medium text-right">{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -183,13 +185,13 @@ export default function DriversPage() {
                           onClick={() => startEdit(d)}
                           className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 mr-2 transition-colors"
                         >
-                          Edit
+                          {t("common.edit")}
                         </button>
                         <button
                           onClick={() => handleDelete(d.id)}
                           className="text-xs px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 transition-colors"
                         >
-                          Delete
+                          {t("common.delete")}
                         </button>
                       </td>
                     </tr>
@@ -217,11 +219,11 @@ export default function DriversPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-3">
                     <div>
-                      <div className="text-slate-500 uppercase tracking-wide">Phone</div>
+                      <div className="text-slate-500 uppercase tracking-wide">{t("drivers.phone")}</div>
                       <div className="text-slate-300">{d.phone || "—"}</div>
                     </div>
                     <div>
-                      <div className="text-slate-500 uppercase tracking-wide">License</div>
+                      <div className="text-slate-500 uppercase tracking-wide">{t("drivers.license")}</div>
                       <div className="text-slate-300">{d.licenseNumber || "—"}</div>
                     </div>
                   </div>
@@ -230,13 +232,13 @@ export default function DriversPage() {
                       onClick={() => startEdit(d)}
                       className="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium transition-colors"
                     >
-                      Edit
+                      {t("common.edit")}
                     </button>
                     <button
                       onClick={() => handleDelete(d.id)}
                       className="flex-1 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium transition-colors"
                     >
-                      Delete
+                      {t("common.delete")}
                     </button>
                   </div>
                 </div>

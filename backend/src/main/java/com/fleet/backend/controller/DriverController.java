@@ -10,9 +10,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/drivers")
-@CrossOrigin(origins = "*")
 public class DriverController {
-    public DriverRepository driverRepository;
+    private final DriverRepository driverRepository;
     public DriverController(DriverRepository driverRepository) {
         this.driverRepository = driverRepository;
     }

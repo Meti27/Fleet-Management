@@ -5,11 +5,13 @@ import com.fleet.backend.repository.UserRepository;
 import com.fleet.backend.security.Role;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile("dev")
+@Order(1) // users before DevDataSeeder links a driver to its login account
 public class DevUserSeeder implements CommandLineRunner {
 
     private final UserRepository userRepo;
@@ -25,6 +27,7 @@ public class DevUserSeeder implements CommandLineRunner {
         seed("admin", "admin123", Role.ADMIN);
         seed("dispatcher", "dispatch123", Role.DISPATCHER);
         seed("viewer", "viewer123", Role.VIEWER);
+        seed("driver", "driver123", Role.DRIVER);
     }
 
     private void seed(String username, String password, Role role) {

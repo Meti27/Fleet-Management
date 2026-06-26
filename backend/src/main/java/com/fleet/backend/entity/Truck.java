@@ -29,6 +29,11 @@ public class Truck {
     @Column(name = "capacity_tons")
     private Double capacityTons;
 
+    /** Nominal fuel consumption in litres per 100 km; used to estimate trip fuel
+     *  from GPS distance. Nullable until an admin sets it per vehicle. */
+    @Column(name = "fuel_consumption_l100km")
+    private Double fuelConsumptionL100km;
+
     @Column(length = 20)
     private String status;
 

@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
       setUser(userObj);
       localStorage.setItem("fleet_admin_auth", JSON.stringify(authState));
 
-      return { success: true };
+      return { success: true, role: userObj.role };
     } catch (err) {
       return { success: false, message: err?.message || "Login failed" };
     }

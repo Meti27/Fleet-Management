@@ -36,4 +36,7 @@ public interface JobRepository extends JpaRepository<Job, Integer> {
                                           List<String> activeStatuses,
                                           LocalDateTime newPickup,
                                           LocalDateTime newDropoff);
+
+    // Jobs assigned to a given driver, soonest pickup first (driver app feed).
+    List<Job> findByDriver_IdOrderByPickupTimeAsc(Integer driverId);
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchDrivers, fetchTrucks, createJob } from "./api";
+import { useT } from "./i18n";
 
 export default function CreateJobForm({ onCreated }) {
+  const { t } = useT();
   const [drivers, setDrivers] = useState([]);
   const [trucks, setTrucks] = useState([]);
 
@@ -33,11 +35,11 @@ export default function CreateJobForm({ onCreated }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.pickupTime || !form.dropoffTime) {
-      alert("Please set pickup and dropoff time.");
+      alert(t("jobs.setPickupDropoff"));
       return;
     }
     if (!form.driverId || !form.truckId) {
-      alert("Please select driver and truck.");
+      alert(t("jobs.selectDriverTruck"));
       return;
     }
 
@@ -69,7 +71,7 @@ export default function CreateJobForm({ onCreated }) {
       });
     } catch (err) {
       console.error(err);
-      alert("Error creating job");
+      alert(t("jobs.errorCreating"));
     } finally {
       setLoading(false);
     }
@@ -80,13 +82,13 @@ export default function CreateJobForm({ onCreated }) {
       onSubmit={handleSubmit}
       className="bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-700 space-y-4"
     >
-      <h2 className="text-base sm:text-lg font-semibold text-slate-50">Create Job</h2>
+      <h2 className="text-base sm:text-lg font-semibold text-slate-50">{t("jobs.createJob")}</h2>
 
       {/* Title */}
-      <Field label="Title">
+      <Field label={t("jobs.title")}>
         <input
           className={inputCls}
-          placeholder="e.g. Delivery to Berlin"
+          placeholder={t("jobs.titlePlaceholder")}
           name="title"
           value={form.title}
           onChange={handleChange}
@@ -96,20 +98,20 @@ export default function CreateJobForm({ onCreated }) {
 
       {/* Locations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="Pickup Location">
+        <Field label={t("jobs.pickupLocation")}>
           <input
             className={inputCls}
-            placeholder="City or address"
+            placeholder={t("jobs.locationPlaceholder")}
             name="pickupLocation"
             value={form.pickupLocation}
             onChange={handleChange}
             required
           />
         </Field>
-        <Field label="Dropoff Location">
+        <Field label={t("jobs.dropoffLocation")}>
           <input
             className={inputCls}
-            placeholder="City or address"
+            placeholder={t("jobs.locationPlaceholder")}
             name="dropoffLocation"
             value={form.dropoffLocation}
             onChange={handleChange}
@@ -120,7 +122,7 @@ export default function CreateJobForm({ onCreated }) {
 
       {/* Times */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="Pickup Time">
+        <Field label={t("jobs.pickupTime")}>
           <input
             type="datetime-local"
             className={inputCls}
@@ -130,7 +132,7 @@ export default function CreateJobForm({ onCreated }) {
             required
           />
         </Field>
-        <Field label="Dropoff Time">
+        <Field label={t("jobs.dropoffTime")}>
           <input
             type="datetime-local"
             className={inputCls}
@@ -143,7 +145,7 @@ export default function CreateJobForm({ onCreated }) {
       </div>
 
       {/* Price */}
-      <Field label="Price (EUR) — optional">
+      <Field label={t("jobs.priceOptional")}>
         <input
           className={inputCls}
           placeholder="0.00"
@@ -155,7 +157,7 @@ export default function CreateJobForm({ onCreated }) {
 
       {/* Driver + Truck */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="Driver">
+        <Field label={t("jobs.driver")}>
           <select
             name="driverId"
             value={form.driverId}
@@ -163,7 +165,7 @@ export default function CreateJobForm({ onCreated }) {
             className={inputCls}
             required
           >
-            <option value="">— Select driver —</option>
+            <option value="">{t("jobs.selectDriver")}</option>
             {drivers.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -171,7 +173,7 @@ export default function CreateJobForm({ onCreated }) {
             ))}
           </select>
         </Field>
-        <Field label="Truck">
+        <Field label={t("jobs.truck")}>
           <select
             name="truckId"
             value={form.truckId}
@@ -179,10 +181,10 @@ export default function CreateJobForm({ onCreated }) {
             className={inputCls}
             required
           >
-            <option value="">— Select truck —</option>
-            {trucks.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.plateNumber} — {t.model}
+            <option value="">{t("jobs.selectTruck")}</option>
+            {trucks.map((tr) => (
+              <option key={tr.id} value={tr.id}>
+                {tr.plateNumber} — {tr.model}
               </option>
             ))}
           </select>
@@ -194,7 +196,7 @@ export default function CreateJobForm({ onCreated }) {
         disabled={loading}
         className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-5 py-2.5 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? "Creating..." : "Create Job"}
+        {loading ? t("common.creating") : t("jobs.createJob")}
       </button>
     </form>
   );

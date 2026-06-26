@@ -17,28 +17,9 @@ jobs:
       run:
         working-directory: backend
 
-    services:
-      mariadb:
-        image: mariadb:11
-        env:
-          MARIADB_DATABASE: fleetdb
-          MARIADB_USER: fleet_user
-          MARIADB_PASSWORD: Random0027
-          MARIADB_ROOT_PASSWORD: root
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mariadb-admin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
-    env:
-      SPRING_PROFILES_ACTIVE: ci
-      DB_URL: jdbc:mariadb://127.0.0.1:3306/fleetdb
-      DB_USER: fleet_user
-      DB_PASS: Random0027
-      SECURITY_JWT_SECRET: 9a8c7b6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8c
+    # No DB service needed: the boot test spins up its own PostgreSQL via
+    # Testcontainers (Docker is preinstalled on GitHub-hosted runners), which
+    # also exercises the Flyway migrations and JPA schema validation.
 
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +31,7 @@ jobs:
           cache: maven
 
       - name: Build & test
-        run: mvn -B clean test -Dsecurity.jwt.secret=9a8c7b6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8c
+        run: mvn -B clean test
 
 
 

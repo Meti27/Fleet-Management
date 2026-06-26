@@ -1,4 +1,5 @@
 package com.fleet.backend.entity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,6 +33,12 @@ public class Driver {
 
     @Column(length = 100)
     private String licenseNumber;
+
+    // Login account for the driver app (nullable — not every driver has one).
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @JsonIgnore
+    private AppUser user;
 
     private LocalDateTime createdAt;
 

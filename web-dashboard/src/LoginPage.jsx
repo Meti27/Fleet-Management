@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { useT } from "./i18n";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,25 +27,30 @@ async function handleSubmit(e) {
     const result = await login(form.username.trim(), form.password);
 
     if (result?.success) {
-      navigate(from, { replace: true });
+      // Drivers go to their own app; everyone else to the dashboard (or saved route).
+      const target = result.role === "DRIVER" ? "/driver" : from;
+      navigate(target, { replace: true });
     } else {
-      setError(result?.message || "Login failed");
+      setError(result?.message || t("login.failed"));
     }
   } catch (err) {
-    setError(err?.message || "Login failed");
+    setError(err?.message || t("login.failed"));
   }
 }
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100 px-4">
       <div className="w-full max-w-sm bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-lg">
-        <h1 className="text-xl font-semibold mb-1">Fleet Admin Login</h1>
-       
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-semibold">{t("login.title")}</h1>
+          <LanguageSwitcher />
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-xs mb-1 text-slate-300">
-              Username
+              {t("login.username")}
             </label>
             <input
               type="text"
@@ -56,7 +64,7 @@ async function handleSubmit(e) {
           </div>
           <div>
             <label className="block text-xs mb-1 text-slate-300">
-              Password
+              {t("login.password")}
             </label>
             <input
               type="password"
@@ -77,7 +85,7 @@ async function handleSubmit(e) {
             type="submit"
             className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-sm font-medium rounded py-2"
           >
-            Sign in
+            {t("login.signIn")}
           </button>
         </form>
       </div>
