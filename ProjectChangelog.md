@@ -1,6 +1,33 @@
 # Project Changelog
 
 ---
+### [2026-06-27] Edit-job scroll-into-view fix + feature smoke test
+
+**Changes:** Fixed a reported UX bug where clicking **Edit** on a job appeared to do nothing — the
+`EditJobPanel` renders at the bottom of the page (after the full jobs list), so on long lists it
+opened below the fold. Now the panel scrolls into view (smooth) when a job is opened for editing.
+Then ran a functional sweep of the backend API to confirm features work end-to-end.
+
+**Frontend (`JobsPage.jsx`):**
+- Added a `useRef` on the edit-panel wrapper + a `useEffect` that `scrollIntoView`s it whenever
+  `editingJob` changes. Wrapper uses `scroll-mt-20` so it lands below the sticky navbar, not under it.
+- Verified live via Vite dev server + Playwright: clicking Edit scrolls the panel fully into the
+  viewport with all fields prefilled.
+
+**Verification (docker stack, admin):**
+- Reads OK: drivers(7), trucks(6 w/ fuel rates), jobs(33), locations/latest.
+- Writes OK: `PUT /jobs/{id}` (edit), `PATCH /jobs/{id}/status?status=` (transitions return 200;
+  illegal transitions return a clean 400 message), `GET /jobs/{id}/history`.
+- Maintenance/GPS OK: `/trucks/{id}/summary`, `/trucks/{id}/reminders`, `/reminders`,
+  `/locations/job/{id}/trip` (trip/fuel estimate).
+- Note: job status is updated via **PATCH + query param**, not PUT + JSON body (the frontend already
+  does this correctly).
+
+**TODOs:** None from this session. (Carryover: error-path `ApiError.timestamp` Instant occasionally
+surfaces a secondary serialization error in container `/error` forwarding — cosmetic log noise, the
+primary JSON error response serializes fine.)
+
+---
 ### [2026-06-26] Dashboard redesign + richer demo data
 
 **Changes:** Reworked the dashboard to look more professional and seeded a fuller demo dataset so it

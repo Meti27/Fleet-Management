@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchJobs, updateJobStatus, deleteJob } from "./api";
 import CreateJobForm from "./CreateJobForm";
@@ -18,6 +18,15 @@ export default function JobsPage() {
   const [search, setSearch] = useState("");
   const [editingJob, setEditingJob] = useState(null);
   const [historyJob, setHistoryJob] = useState(null);
+  const editPanelRef = useRef(null);
+
+  // When a job is opened for editing, scroll the panel into view so it doesn't
+  // silently appear below the jobs list (otherwise the click looks like a no-op).
+  useEffect(() => {
+    if (editingJob && editPanelRef.current) {
+      editPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [editingJob]);
 
   async function loadJobs() {
     try {
@@ -238,11 +247,13 @@ export default function JobsPage() {
       )}
 
       {editingJob && (
-        <EditJobPanel
-          job={editingJob}
-          onSaved={() => { setEditingJob(null); loadJobs(); }}
-          onCancel={() => setEditingJob(null)}
-        />
+        <div ref={editPanelRef} className="scroll-mt-20">
+          <EditJobPanel
+            job={editingJob}
+            onSaved={() => { setEditingJob(null); loadJobs(); }}
+            onCancel={() => setEditingJob(null)}
+          />
+        </div>
       )}
       {historyJob && (
         <JobHistoryPanel
