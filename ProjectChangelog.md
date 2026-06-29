@@ -1,6 +1,34 @@
 # Project Changelog
 
 ---
+### [2026-06-29] Demo data seeds under prod profile (Railway-ready deploy)
+
+**Changes:** Made the rich demo dataset populate under the `prod` profile, not just `dev`, so a cloud
+deploy (Railway backend + Postgres, Vercel frontend) comes up fully populated without running the
+dev profile (which also enables verbose SQL logging). Seeding stays idempotent — every block is gated
+on an empty table, so it's a no-op against a prod DB that already holds real data.
+
+**Backend:**
+- `DevDataSeeder`: `@Profile("dev")` → `@Profile({"dev","prod"})`; clarified the Javadoc (idempotent,
+  no-op on populated DBs, ordering note).
+- `ProdUserSeeder`: added `@Order(1)` so it runs before `DevDataSeeder` (`@Order(2)`) — otherwise the
+  unordered runner would run last and `linkDriverLogin()` wouldn't find the driver login. Added the
+  `driver / driver123` (DRIVER) login so the driver app + live GPS work in the prod demo.
+
+**Verified:** Booted the app with `SPRING_PROFILES_ACTIVE=prod` against a throwaway empty Postgres.
+Flyway applied V1–V5, then prod seeding produced 7 drivers, 6 trucks, 33 jobs (22 DONE / 3 CANCELLED /
+1 IN_PROGRESS / 2 ASSIGNED / 5 OPEN), admin + driver logins both work, and the driver-app linked job
+is present — identical to the dev demo.
+
+**Deploy notes:** Railway backend root dir = `backend` (Dockerfile, binds `$PORT`); add a Railway
+Postgres in the same project and reference its vars (`SPRING_DATASOURCE_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}`,
+`SPRING_DATASOURCE_USERNAME/PASSWORD`); set `SPRING_PROFILES_ACTIVE=prod` + `SECURITY_JWT_SECRET`.
+Vercel domain `fleet-management-sable.vercel.app` is already in the CORS + WS allow-lists.
+
+**TODOs:** Demo credentials (incl. the new `driver` login) are still hardcoded — replace before any
+real/customer-facing deployment.
+
+---
 ### [2026-06-27] Edit-job scroll-into-view fix + feature smoke test
 
 **Changes:** Fixed a reported UX bug where clicking **Edit** on a job appeared to do nothing — the

@@ -21,15 +21,20 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Seeds a realistic demo dataset (dev profile only): drivers, trucks, and a spread
+ * Seeds a realistic demo dataset (dev + prod profiles): drivers, trucks, and a spread
  * of jobs across statuses and dates so the dashboard's KPIs, revenue trend and
  * charts look populated. DONE jobs are dated across the last ~8 weeks to drive the
  * revenue trend; a few active jobs are scheduled for today. Deterministic (fixed
  * RNG seed) so the demo looks the same on every fresh boot.
+ *
+ * <p>Idempotent: every block is gated on an empty table ({@code count() == 0}), so on
+ * a prod DB that already holds real data this is a no-op — it only populates a fresh
+ * deployment (e.g. a Railway demo). Runs after the user seeder ({@code @Order(2)} vs
+ * the user seeder's {@code @Order(1)}) so the "driver" login exists for linking.
  */
 @Component
-@Profile("dev")
-@Order(2) // runs after DevUserSeeder so the "driver" login already exists
+@Profile({"dev", "prod"})
+@Order(2) // runs after the user seeder so the "driver" login already exists
 public class DevDataSeeder implements CommandLineRunner {
 
     private final DriverRepository driverRepo;
