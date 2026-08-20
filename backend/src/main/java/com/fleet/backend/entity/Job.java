@@ -39,6 +39,12 @@ public class Job {
     @Column(name = "price_eur", precision = 10, scale = 2)
     private BigDecimal priceEur;
 
+    /** Payload in tonnes. Feeds the load-aware trip fuel estimate. Deliberately
+     *  unconstrained against {@link Truck#getCapacityTons()} — an overloaded job
+     *  is a normal save; the fuel model simply costs more. */
+    @Column(name = "load_weight_tons")
+    private Double loadWeightTons;
+
     @Column(length = 20)
     private String status;
 

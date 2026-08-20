@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchDashboardSummary, fetchJobs, fetchReminders } from "./api";
+import { fetchDashboardSummary, fetchJobs, fetchReminders, fetchFlaggedJobs } from "./api";
 import { useNavigate } from "react-router-dom";
 import { useT } from "./i18n";
 import {
@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [flagged, setFlagged] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -35,14 +36,16 @@ export default function DashboardPage() {
     async function load() {
       try {
         setLoading(true);
-        const [summaryData, jobsData, remindersData] = await Promise.all([
+        const [summaryData, jobsData, remindersData, flaggedData] = await Promise.all([
           fetchDashboardSummary(),
           fetchJobs(),
           fetchReminders().catch(() => []),
+          fetchFlaggedJobs(10).catch(() => []),
         ]);
         setSummary(summaryData);
         setJobs(jobsData);
         setReminders(remindersData);
+        setFlagged(flaggedData);
         setError("");
       } catch (err) {
         console.error(err);
@@ -267,6 +270,41 @@ export default function DashboardPage() {
         </Card>
       </section>
 
+      {/* Trip verification — the telemetry cross-check */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-slate-100">{t("verify.heading")}</h2>
+          <span className="text-[10px] sm:text-[11px] text-slate-500 hidden xs:block">{t("verify.hint")}</span>
+        </div>
+        {flagged.length === 0 ? (
+          <p className="text-sm text-slate-500">{t("verify.allClear")}</p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {flagged.map((v) => (
+              <button
+                key={v.jobId}
+                onClick={() => navigate(`/jobs?jobId=${v.jobId}`)}
+                className="flex items-center gap-2 sm:gap-3 text-left px-2 py-1.5 rounded-lg hover:bg-slate-800/50 transition-colors"
+              >
+                <span
+                  className={`inline-flex text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${
+                    v.verdict === "SUSPICIOUS"
+                      ? "bg-red-500/20 text-red-300"
+                      : "bg-slate-700/60 text-slate-400"
+                  }`}
+                >
+                  {t(`verify.${v.verdict}`)}
+                </span>
+                <span className="text-xs text-slate-200 font-medium whitespace-nowrap">
+                  {v.plateNumber || "—"}
+                </span>
+                <span className="text-xs text-slate-400 truncate">{v.reason}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* Active jobs today */}
       <Card>
         <div className="flex items-center justify-between mb-3">
@@ -429,6 +467,7 @@ function StatusBadge({ status }) {
   let cls = "bg-slate-800 text-slate-200";
   if (s === "DONE") cls = "bg-emerald-500/20 text-emerald-300";
   else if (s === "CANCELLED") cls = "bg-red-500/20 text-red-300";
+  else if (s === "PAUSED") cls = "bg-violet-500/20 text-violet-300";
   else if (s === "IN_PROGRESS" || s === "ASSIGNED" || s === "OPEN") cls = "bg-amber-500/20 text-amber-300";
 
   return (
@@ -494,7 +533,7 @@ function getTodayActiveJobs(jobs) {
 function isActiveStatus(status) {
   if (!status) return false;
   const s = status.toUpperCase();
-  return s === "OPEN" || s === "ASSIGNED" || s === "IN_PROGRESS";
+  return s === "OPEN" || s === "ASSIGNED" || s === "IN_PROGRESS" || s === "PAUSED";
 }
 
 function formatTime(value) {

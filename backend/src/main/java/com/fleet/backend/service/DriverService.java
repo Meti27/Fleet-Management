@@ -3,6 +3,7 @@ package com.fleet.backend.service;
 import com.fleet.backend.entity.AppUser;
 import com.fleet.backend.entity.Driver;
 import com.fleet.backend.entity.Job;
+import com.fleet.backend.entity.Truck;
 import com.fleet.backend.repository.DriverRepository;
 import com.fleet.backend.repository.JobRepository;
 import com.fleet.backend.repository.UserRepository;
@@ -54,7 +55,24 @@ public class DriverService {
         return jobs.findByDriver_IdOrderByPickupTimeAsc(currentDriver().getId());
     }
 
-    public Job startJob(Integer jobId) {
+    /**
+     * Start a job. Requires the token behind the QR sticker in the assigned truck's
+     * cab: the driver's login establishes <em>who</em> they are, the scan proves they
+     * are <em>at the vehicle</em>. Only start is gated — pause, resume and finish are
+     * plain taps.
+     */
+    public Job startJob(Integer jobId, String scannedToken) {
+        Job job = ownedJob(jobId);
+        requireTruckPresence(job, scannedToken);
+        return jobService.updateStatus(jobId, "IN_PROGRESS");
+    }
+
+    public Job pauseJob(Integer jobId) {
+        ownedJob(jobId);
+        return jobService.updateStatus(jobId, "PAUSED");
+    }
+
+    public Job resumeJob(Integer jobId) {
         ownedJob(jobId);
         return jobService.updateStatus(jobId, "IN_PROGRESS");
     }
@@ -62,6 +80,39 @@ public class DriverService {
     public Job finishJob(Integer jobId) {
         ownedJob(jobId);
         return jobService.updateStatus(jobId, "DONE");
+    }
+
+    /**
+     * Verify the scanned QR belongs to the truck this job is assigned to.
+     * Tolerates the token arriving either bare or as the full URL encoded in the
+     * QR ({@code https://host/t/<token>}), so a client that forwards the raw scan
+     * still works.
+     */
+    private void requireTruckPresence(Job job, String scannedToken) {
+        String token = normalizeToken(scannedToken);
+        if (token.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Scan the QR code in the truck's cab to start this job");
+        }
+        Truck truck = job.getTruck();
+        if (truck == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Job #" + job.getId() + " has no truck assigned yet — ask dispatch to assign one");
+        }
+        if (!token.equals(truck.getQrToken())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "That QR belongs to a different truck — job #" + job.getId()
+                            + " is assigned to " + truck.getPlateNumber());
+        }
+    }
+
+    /** Accept a bare token or the last path segment of the QR's URL. */
+    private static String normalizeToken(String raw) {
+        if (raw == null) return "";
+        String v = raw.trim();
+        int slash = v.lastIndexOf('/');
+        if (slash >= 0) v = v.substring(slash + 1);
+        return v.trim();
     }
 
     private Job ownedJob(Integer jobId) {

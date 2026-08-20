@@ -1,12 +1,14 @@
 # Session Context — Fleet Management Platform
 
 > Living handoff doc so a fresh session picks up without losing context.
-> Last updated: **2026-06-26**. For per-change detail see `ProjectChangelog.md`; for
+> Last updated: **2026-08-20**. For per-change detail see `ProjectChangelog.md`; for
 > architecture/commands see `CLAUDE.md`.
 
 ## What this product is
 
-A **pitch-ready demo** of a fleet-management SaaS for potential (not-yet-signed) clients.
+A **pitch-ready demo** of a fleet-management SaaS. As of **2026-08-20 there is a real
+(still unsigned) client** driving requirements — the work is client-facing, but deliberately
+still running on demo data to showcase the workflow, **not** production with real records.
 Target market is **North Macedonia** → use **metric (km, liters)** and **EUR** everywhere.
 Strategy: **Android-first (React Native / Expo), $0 budget, demo-first** — build one polished
 end-to-end flow rather than half of everything. Push via Expo/FCM is free; the only optional
@@ -30,13 +32,47 @@ directly.** Local/dev DB data is throwaway (safe to reset).
   state machine (`OPEN→ASSIGNED→IN_PROGRESS→DONE`, illegal moves → 400), in-app notifications
   (stored + polled), driver-scoped `/api/driver/**` API, and a **mobile-web** driver view
   (`src/driver/`, routes `/driver` + `/driver/jobs/:id`). Decision: mobile-web first, **not**
-  Expo yet (that's Phase 4 with push). Verified e2e. See the changelog entry for details.
+  Expo yet (that's Phase 5 with push). Verified e2e. See the changelog entry for details.
 - **Phase 3 — Live GPS tracking (DONE 2026-06-26):** driver shares location (geolocation +
   demo simulation fallback) → REST ping → backend persists + broadcasts over STOMP/WebSocket →
   admin Leaflet/OSM live map (`/map`). Raw WS (no SockJS); STOMP CONNECT is JWT-authed. See the
   Phase 3 quick reference below + the changelog entry.
-- **Phase 4 — Background push + native app (NEXT):** React Native / Expo port of the driver view +
+- **Phase 4 — Client feature round (DONE 2026-08-20):** scan-to-start (cab QR proves presence on
+  top of the driver login), job pause/resume, load weight on jobs, truck-mounted GPS/OBD telemetry
+  with an ingest endpoint + simulator, and trip verification that cross-checks the driver's claim
+  against what the vehicle actually did. See the quick reference below and the changelog entry.
+- **Phase 5 — Background push + native app (NEXT):** React Native / Expo port of the driver view +
   Expo / FCM push (drivers alerted when the app is closed).
+
+## Client feature round — quick reference (Phase 4, 2026-08-20)
+
+- **Scan-to-start.** Driver accounts stayed; the QR is a *presence* check layered on top.
+  `POST /api/driver/jobs/{id}/start {truckToken}` must match the assigned truck's `qr_token`.
+  Pause/resume/finish need no scan. **`Truck.qrToken` is `@JsonIgnore`d** — reads are
+  `isAuthenticated()`, so an exposed field would let a DRIVER read every token from `/api/trucks`
+  and fake presence. Admin-only `GET|POST /api/trucks/{id}/qr[/regenerate]`; QR tab on
+  `TruckDetailPage` prints the sticker. Scanner is lazy-imported (`qr-scanner`) with a
+  manual-code fallback for denied cameras.
+- **PAUSED** is cross-cutting: `ALLOWED_TRANSITIONS`, `ACTIVE_STATUSES` (paused still blocks its
+  truck), three `DashboardController` checks, four frontend maps, en/sq/mk. Watch for these when
+  adding any further status.
+- **Telemetry.** `truck_telemetry` + `truck_devices` are **separate from `location_pings`**
+  (vehicle vs driver phone — do not merge them). `POST /api/telemetry` with `X-Device-Key`
+  (SHA-256, not BCrypt — high-entropy keys on a hot path), batch-capable. `TelemetrySimulator`
+  (dev/prod) fakes hardware; `fleet.telemetry.simulator.parked-plates` (default `TE-1006-AA`)
+  is held stationary so the suspicious case is demoable. Demo keys: `demo-device-<plate>`,
+  logged at startup under `dev` only.
+- **Verification.** `TripVerificationService` computes `VERIFIED | SUSPICIOUS | NO_DATA |
+  NOT_STARTED` on demand, never stored. Note **displacement vs distance**: an idling truck with
+  jittery GPS accrues path length without going anywhere, so displacement is the honest signal.
+  `flagged()` is bounded to running jobs + completions in the last 7 days.
+- **Fuel is load-aware:** `effectiveRate = base + 0.45 × loadTons`
+  (`fleet.fuel.extra-l-per-ton-per-100km`). `Truck.fuelConsumptionL100km` now means the **unladen**
+  rate. Load weight is deliberately **never validated against `capacityTons`** — overloaded jobs
+  must save; linearity means they just cost more fuel.
+- **Odometer feed:** finishing a job writes an `OdometerReading` with `source=TELEMETRY`, so km-based
+  maintenance reminders run off telemetry with no changes to the reminder engine. Requires a
+  baseline reading per truck (seeded) — mileage accrues as a delta.
 
 ## Live GPS tracking — quick reference (Phase 3)
 
@@ -80,7 +116,7 @@ directly.** Local/dev DB data is throwaway (safe to reset).
   driver from JWT, enforces ownership) + `NotificationService`. `GlobalExceptionHandler` now maps
   `AccessDeniedException` → 403 (was 500 for every `@PreAuthorize` denial).
 - **Notifications** are in-app (stored, polled every 30s by `DriverHeader`); the message text is
-  stored server-side in English — templatize per-language later if needed. Push = Phase 4.
+  stored server-side in English — templatize per-language later if needed. Push = Phase 5.
 - **Testing note:** Playwright's synthetic pointer-clicks don't reach React 19's delegated
   onClick handlers in this setup (native form-submit and programmatic `.click()` do, and real
   taps work). When driving the driver UI via Playwright, click app buttons through

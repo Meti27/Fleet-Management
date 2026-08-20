@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * In-app notification for a user (Phase 2). Stored + polled by the driver app;
- * background push (FCM) is Phase 4. {@code jobId} is a plain id (not a relation)
+ * background push (FCM) is Phase 5. {@code jobId} is a plain id (not a relation)
  * to keep serialization simple and avoid lazy Job recursion.
  */
 @Entity

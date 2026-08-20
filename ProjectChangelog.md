@@ -1,6 +1,127 @@
 # Project Changelog
 
 ---
+### [2026-08-20] Client feature round: scan-to-start, pause/resume, load weight, truck telemetry
+
+**Context:** First round of work driven by a real (still unsigned) client rather than as a learning
+exercise. Deliberately still on demo data — the client is being shown the workflow, not running a
+fleet. Delivered as four independently demoable phases (plan: `~/.claude/plans/lovely-strolling-marshmallow.md`).
+
+**Phase A — load weight + PAUSED status**
+- `V6__load_weight_and_qr_token.sql`: `jobs.load_weight_tons`, `trucks.qr_token` (backfilled with
+  `gen_random_uuid()`, then NOT NULL + UNIQUE).
+- `Job.loadWeightTons` (tonnes, matching `capacityTons`) through `JobRequest` → create/update, into
+  `CreateJobForm`, `EditJobPanel` and the `JobsPage` table/cards. **No cap and no warning against
+  truck capacity** — the client requires overloaded jobs to save normally.
+- `PAUSED` added everywhere status is enumerated: `ALLOWED_TRANSITIONS`
+  (`IN_PROGRESS↔PAUSED`, `PAUSED→DONE/CANCELLED`), `ACTIVE_STATUSES` (so a paused job still blocks
+  its truck), all three `DashboardController` active-status checks, four frontend badge/filter maps,
+  and en/sq/mk.
+
+**Phase B — cab QR + scan-to-start**
+- Driver accounts stay. The login answers *who*; the QR answers *are you at the truck*. Start now
+  requires `POST /api/driver/jobs/{id}/start {truckToken}`, matched against the assigned truck.
+  Pause/resume/finish are plain taps (client chose one scan per job).
+- **`Truck.qrToken` is `@JsonIgnore`d.** Without this a DRIVER could read every token from
+  `GET /api/trucks` (reads are `isAuthenticated()`) and fake presence without leaving home —
+  which would have defeated the entire feature. The token is served only from
+  `GET /api/trucks/{id}/qr`, ADMIN/DISPATCHER only, with a `/qr/regenerate` sibling.
+- `driver/ScanTruckModal.jsx` — camera scan with `qr-scanner` behind a dynamic `import()`, plus a
+  manual-code fallback so a denied camera permission can't dead-end a driver. QR tab on
+  `TruckDetailPage` renders/prints the sticker (`qrcode`, also lazy).
+
+**Phase C — truck telemetry ingest**
+- `V7__truck_telemetry.sql`: `truck_devices` + `truck_telemetry`. Kept **separate from
+  `location_pings`**, which is the driver's phone — different provenance, auth, volume and columns,
+  and the working Phase 3 demo depends on it. Position and OBD columns are both nullable so a GPS
+  tracker or an OBD dongle fits; hardware is still undecided.
+- `POST /api/telemetry` authenticates with `X-Device-Key` (not JWT — the device is a box, not a
+  user). Keys hashed with **SHA-256, not BCrypt**: they are long random strings, so BCrypt's work
+  factor would throttle ingest for no security gain. Accepts batches (devices buffer offline) and
+  skips unusable frames rather than failing the whole batch.
+- `TelemetrySimulator` (dev/prod, `fleet.telemetry.simulator.enabled`) drives seeded trucks so the
+  whole chain demos with no hardware; plates in `parked-plates` (default `TE-1006-AA`) are held
+  stationary to produce the suspicious case on purpose.
+
+**Phase D — verification, load-aware fuel, odometer feed**
+- `TripVerificationService` → `VERIFIED | SUSPICIOUS | NO_DATA | NOT_STARTED`, computed and never
+  stored (same approach as `MaintenanceReminderService`). Signals: finished without leaving; claimed
+  running ≥20 min with <1 km displacement; >2 km of movement during a declared pause. Surfaced at
+  `GET /api/jobs/{id}/verification`, `GET /api/jobs/flagged`, a `JobsPage` badge and a dashboard panel.
+- **Displacement vs distance** are tracked separately — an idling truck with jittery GPS accumulates
+  path length while never actually going anywhere, so displacement is what proves a real trip.
+- Fuel is now load-aware: `effectiveRate = base + 0.45 × loadTons` (`fleet.fuel.extra-l-per-ton-per-100km`).
+  Linearity is *why overload needs no special case* — 30 t on a 22 t truck simply costs more.
+  `estimateTrip` now prefers vehicle telemetry over phone pings.
+- Completing a job writes an `OdometerReading` with `source=TELEMETRY`, so every existing km-based
+  maintenance reminder works off telemetry with **zero changes to the reminder engine** (it already
+  derives current km from `max(reading_km)`).
+
+**Files:** 7 new backend services/entities/DTOs + `util/GeoUtils` (haversine extracted so both
+position sources measure identically), 2 migrations, `driver/ScanTruckModal.jsx`, plus edits across
+job/truck/driver controllers, `LocationService`, `JobServiceImpl`, and 8 frontend files.
+
+**Decisions:**
+- The account-less `/t/<token>` kiosk explored in planning was **dropped** — accounts + QR is
+  strictly better (a photographed sticker is near-worthless without a matching login).
+- URL secrecy was never the lie-detection mechanism; telemetry is. A driver holds the QR legitimately.
+- `flagged()` is bounded to running jobs plus completions in the last 7 days, or historical trips
+  that predate the trackers would bury real alerts under `NO_DATA`.
+
+**Beyond the plan (small, needed to make features demonstrable):** seeded odometer baselines (mileage
+accrues as a delta — with no baseline the telemetry→odometer→reminders chain silently does nothing)
+and demo load weights (4 of 33 deliberately over capacity).
+
+**Verified:** Flyway V1→V7 on a fresh Postgres 16 with `ddl-auto=validate` passing; 30 t on a 22 t
+truck saves (HTTP 200); full PAUSED lifecycle + illegal transitions still 400; QR token absent from
+driver-visible payloads and `/qr` 403 for DRIVER / 200 for ADMIN; scan rejected when missing, empty
+or from the wrong truck, accepted bare or as a URL; regeneration invalidates the old sticker;
+ownership still enforced; ingest 401/401/200 for no/bad/good key; all five verdicts reproduced live
+(incl. "moved 2.2 km while paused"); fuel 27.0 + 0.45×24 = 37.8 L/100km exactly; odometer
+210000 → 210005 via `TELEMETRY`. `npm run build` green with the scanner in its own chunk
+(main bundle unchanged by the libraries). No new lint findings.
+
+**TODOs:** `mvn test` still skips locally — Testcontainers' Java client can't negotiate this
+machine's Docker API (env-only; verified manually against real Postgres instead, CI unaffected).
+Live map is still keyed by driver, so a truck reporting with no active job is stored but not shown.
+Manual QR fallback requires typing the full 32-char token. Route-plausibility needs geocoded job
+locations. `graphify-out/` is stale (2026-06-24).
+
+
+---
+### [2026-08-20] Fix API error messages + PUT field wiping; drop dead form components
+
+**Changes:** Four defects found during a full read-through of the codebase.
+
+1. **`api.js:handleError` never surfaced the server's message.** The `throw new Error(msg)` sat
+   *inside* the `try`, so its own `catch` swallowed it and rethrew the raw response body. Every
+   backend error reached the user as a full JSON blob, defeating the `ResponseStatusException`
+   messages in `JobServiceImpl` (scheduling conflicts, illegal status transitions, etc.).
+   Now the message is resolved into a variable and thrown *after* the try/catch.
+2. **`TruckController.updateTruck` wiped `status` on every edit.** `TrucksPage` submits only
+   `{plateNumber, model, capacityTons, fuelConsumptionL100km}`, but the controller unconditionally
+   copied `status` from the request → `null`. Now only overwritten when the client sends a value.
+3. **`DriverController.updateDriver` wiped `email` and `status`** — same pattern; `DriversPage`
+   submits only `{name, phone, licenseNumber}`. Same null-guard fix.
+4. **Removed dead `DriverForm.jsx` / `TruckForm.jsx`** — unreferenced (both pages have inline
+   forms) and carrying hardcoded English strings that bypassed `t()`.
+
+**Files:** `web-dashboard/src/api.js`, `backend/.../controller/TruckController.java`,
+`backend/.../controller/DriverController.java`, deleted `web-dashboard/src/{DriverForm,TruckForm}.jsx`
+
+**Decisions:** For (2)/(3), guarded the null instead of adding the fields to the forms — those are
+lifecycle/secondary fields the edit UI deliberately doesn't manage. `capacityTons` /
+`fuelConsumptionL100km` keep strict overwrite semantics, since an empty input there means "clear it".
+
+**Verified:** `mvn clean compile` and `npm run build` both pass; `handleError` checked against four
+response shapes (ApiError JSON → extracts `message`; plain text → raw text; empty → fallback;
+JSON without a message field → fallback).
+
+**TODOs:** `graphify-out/` is stale (generated 2026-06-24, predates the driver-app/GPS commit) —
+re-run `/graphify` to refresh. `JobHistoryPanel` still renders raw ISO timestamps while the
+driver-side timeline formats them.
+
+---
 ### [2026-06-29] Demo data seeds under prod profile (Railway-ready deploy)
 
 **Changes:** Made the rich demo dataset populate under the `prod` profile, not just `dev`, so a cloud

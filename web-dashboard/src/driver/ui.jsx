@@ -6,6 +6,7 @@ export function StatusBadge({ status }) {
   const cls =
     status === "DONE" ? "bg-emerald-500/20 text-emerald-300" :
     status === "IN_PROGRESS" ? "bg-amber-500/20 text-amber-300" :
+    status === "PAUSED" ? "bg-violet-500/20 text-violet-300" :
     status === "CANCELLED" ? "bg-red-500/20 text-red-300" :
     status === "ASSIGNED" ? "bg-blue-500/20 text-blue-300" :
     "bg-slate-800 text-slate-300";

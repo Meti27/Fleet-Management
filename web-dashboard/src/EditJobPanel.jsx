@@ -14,6 +14,7 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
     pickupTime: job.pickupTime ? job.pickupTime.slice(0, 16) : "",
     dropoffTime: job.dropoffTime ? job.dropoffTime.slice(0, 16) : "",
     priceEur: job.priceEur != null ? job.priceEur : "",
+    loadWeightTons: job.loadWeightTons != null ? job.loadWeightTons : "",
     status: job.status || "OPEN",
     driverId: job.driver ? job.driver.id : "",
     truckId: job.truck ? job.truck.id : "",
@@ -48,6 +49,7 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
         pickupTime: form.pickupTime || null,
         dropoffTime: form.dropoffTime || null,
         priceEur: form.priceEur ? parseFloat(form.priceEur) : null,
+        loadWeightTons: form.loadWeightTons ? parseFloat(form.loadWeightTons) : null,
         status: form.status || job.status,
         driverId: form.driverId ? parseInt(form.driverId) : null,
         truckId: form.truckId ? parseInt(form.truckId) : null,
@@ -137,14 +139,26 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
           </Field>
         </div>
 
-        {/* Price + Status */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Price + Load + Status */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label={t("jobs.price")}>
             <input
               className={inputCls}
               placeholder="0.00"
               name="priceEur"
               value={form.priceEur}
+              onChange={handleChange}
+            />
+          </Field>
+          <Field label={t("jobs.loadWeight")}>
+            <input
+              className={inputCls}
+              placeholder="0.0"
+              type="number"
+              step="0.1"
+              min="0"
+              name="loadWeightTons"
+              value={form.loadWeightTons}
               onChange={handleChange}
             />
           </Field>
@@ -158,6 +172,7 @@ export default function EditJobPanel({ job, onSaved, onCancel }) {
               <option value="OPEN">{t("status.OPEN")}</option>
               <option value="ASSIGNED">{t("status.ASSIGNED")}</option>
               <option value="IN_PROGRESS">{t("status.IN_PROGRESS")}</option>
+              <option value="PAUSED">{t("status.PAUSED")}</option>
               <option value="DONE">{t("status.DONE")}</option>
               <option value="CANCELLED">{t("status.CANCELLED")}</option>
             </select>

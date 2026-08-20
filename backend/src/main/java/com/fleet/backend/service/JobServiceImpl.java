@@ -28,9 +28,10 @@ public class JobServiceImpl implements JobService {
     private final TruckRepository truckRepository;
     private final JobStatusHistoryRepository historyRepository;
     private final NotificationService notificationService;
+    private final TelemetryService telemetryService;
 
     // Decide what statuses count as "active" for conflict checks
-    private static final List<String> ACTIVE_STATUSES = List.of("OPEN", "ASSIGNED", "IN_PROGRESS");
+    private static final List<String> ACTIVE_STATUSES = List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "PAUSED");
 
     // Legal status transitions (Phase 2 state machine). Kept permissive enough not to
     // break the existing dashboard (OPEN can still go straight to IN_PROGRESS), while
@@ -38,7 +39,8 @@ public class JobServiceImpl implements JobService {
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
             "OPEN", Set.of("ASSIGNED", "IN_PROGRESS", "CANCELLED"),
             "ASSIGNED", Set.of("IN_PROGRESS", "OPEN", "CANCELLED"),
-            "IN_PROGRESS", Set.of("DONE", "CANCELLED"),
+            "IN_PROGRESS", Set.of("PAUSED", "DONE", "CANCELLED"),
+            "PAUSED", Set.of("IN_PROGRESS", "DONE", "CANCELLED"),
             "DONE", Set.of(),
             "CANCELLED", Set.of()
     );
@@ -47,12 +49,14 @@ public class JobServiceImpl implements JobService {
                           DriverRepository driverRepository,
                           TruckRepository truckRepository,
                           JobStatusHistoryRepository historyRepository,
-                          NotificationService notificationService) {
+                          NotificationService notificationService,
+                          TelemetryService telemetryService) {
         this.jobRepository = jobRepository;
         this.driverRepository = driverRepository;
         this.truckRepository = truckRepository;
         this.historyRepository = historyRepository;
         this.notificationService = notificationService;
+        this.telemetryService = telemetryService;
     }
 
     @Override
@@ -78,6 +82,7 @@ public class JobServiceImpl implements JobService {
                 .pickupTime(request.getPickupTime())
                 .dropoffTime(request.getDropoffTime())
                 .priceEur(request.getPriceEur())
+                .loadWeightTons(request.getLoadWeightTons())
                 .status((request.getStatus() == null || request.getStatus().isBlank()) ? "OPEN" : request.getStatus())
                 .build();
 
@@ -135,6 +140,7 @@ public class JobServiceImpl implements JobService {
         existing.setPickupTime(request.getPickupTime());
         existing.setDropoffTime(request.getDropoffTime());
         existing.setPriceEur(request.getPriceEur());
+        existing.setLoadWeightTons(request.getLoadWeightTons());
 
         // status (only update if provided)
         if (request.getStatus() != null) {
@@ -193,6 +199,14 @@ public class JobServiceImpl implements JobService {
 
         Job saved = jobRepository.save(job);
         recordStatusChange(saved, oldStatus, status);
+
+        // A finished trip contributes the distance it covered to the truck's mileage,
+        // which is what keeps km-based maintenance reminders current without anyone
+        // typing an odometer reading. Applied here rather than in the driver flow so
+        // admin-side completions count too.
+        if ("DONE".equals(status)) {
+            telemetryService.writeOdometerForCompletedJob(saved);
+        }
 
         return saved;
     }

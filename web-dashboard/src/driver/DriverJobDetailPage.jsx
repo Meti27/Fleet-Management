@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useT } from "../i18n";
-import { fetchMyJobs, fetchJobHistory, startJob, finishJob } from "../api";
+import { fetchMyJobs, fetchJobHistory, startJob, pauseJob, resumeJob, finishJob } from "../api";
+import ScanTruckModal from "./ScanTruckModal";
 import DriverHeader from "./DriverHeader";
 import { useDriverLocation } from "./DriverLocationContext";
 import { StatusBadge, fmtDateTime } from "./ui";
@@ -17,6 +18,7 @@ export default function DriverJobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   async function load() {
     try {
@@ -38,19 +40,23 @@ export default function DriverJobDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [id]);
 
-  async function act(action) {
+  async function run(fn, after) {
     setBusy(true);
     try {
-      await action(job.id);
-      // Starting a job begins location sharing tagged to it; finishing stops it.
-      if (action === startJob) startForJob(job.id);
-      if (action === finishJob) stopForJob(job.id);
+      await fn();
+      after?.();
       await load();
     } catch (err) {
       alert(err.message);
     } finally {
       setBusy(false);
     }
+  }
+
+  // Starting needs proof of presence, so it goes through the scanner first.
+  async function handleScanned(token) {
+    setScanning(false);
+    await run(() => startJob(job.id, token), () => startForJob(job.id));
   }
 
   return (
@@ -91,16 +97,34 @@ export default function DriverJobDetailPage() {
               {/* Big primary action */}
               {job.status === "ASSIGNED" && (
                 <button
-                  onClick={() => act(startJob)}
+                  onClick={() => setScanning(true)}
                   disabled={busy}
                   className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-base font-semibold transition-colors disabled:opacity-50"
                 >
-                  ▶ {t("driver.start")}
+                  ⛶ {t("driver.scanToStart")}
+                </button>
+              )}
+              {job.status === "PAUSED" && (
+                <button
+                  onClick={() => run(() => resumeJob(job.id), () => startForJob(job.id))}
+                  disabled={busy}
+                  className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-base font-semibold transition-colors disabled:opacity-50"
+                >
+                  ▶ {t("jobs.resume")}
                 </button>
               )}
               {job.status === "IN_PROGRESS" && (
                 <button
-                  onClick={() => act(finishJob)}
+                  onClick={() => run(() => pauseJob(job.id))}
+                  disabled={busy}
+                  className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-base font-semibold transition-colors disabled:opacity-50"
+                >
+                  ‖ {t("jobs.pause")}
+                </button>
+              )}
+              {(job.status === "IN_PROGRESS" || job.status === "PAUSED") && (
+                <button
+                  onClick={() => run(() => finishJob(job.id), () => stopForJob(job.id))}
                   disabled={busy}
                   className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-semibold transition-colors disabled:opacity-50"
                 >
@@ -134,6 +158,15 @@ export default function DriverJobDetailPage() {
           </>
         )}
       </main>
+
+      {scanning && job && (
+        <ScanTruckModal
+          expectedPlate={job.truck?.plateNumber}
+          busy={busy}
+          onScanned={handleScanned}
+          onCancel={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }

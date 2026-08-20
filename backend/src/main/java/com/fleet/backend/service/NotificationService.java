@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * In-app notifications (Phase 2). Stored and polled by the driver app; background
- * push is Phase 4.
+ * push is Phase 5.
  */
 @Service
 public class NotificationService {

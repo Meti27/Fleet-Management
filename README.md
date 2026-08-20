@@ -296,8 +296,12 @@ This is being built in phases toward a pitch-ready product. See `ProjectChangelo
 
 - ✅ **Phase 0 — Foundations:** Flyway-owned schema + Testcontainers verification.
 - ✅ **Phase 1 — Fleet maintenance logging:** fuel, maintenance, odometer, documents, reminders.
-- ⏭️ **Phase 2 — Driver app:** `DRIVER` role + Driver↔User link, job state machine, start/finish jobs, in-app notifications (React Native / Expo).
-- ⏭️ **Phase 3 — Live GPS tracking** · **Phase 4 — Background push** (Expo/FCM).
+- ✅ **Phase 2 — Driver app:** `DRIVER` role + Driver↔User link, job state machine, start/finish jobs, in-app notifications (mobile web).
+- ✅ **Phase 3 — Live GPS tracking:** driver location sharing → STOMP/WebSocket → admin Leaflet map.
+- ✅ **Phase 4 — Client feature round:** cab-QR scan-to-start, job pause/resume, load weight on jobs,
+  truck GPS/OBD telemetry ingest, and trip verification cross-checking the driver's claim against
+  what the vehicle actually did.
+- ⏭️ **Phase 5 — Background push + native app** (React Native / Expo, Expo/FCM push).
 
 ### Known issues / tech debt
 

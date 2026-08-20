@@ -14,6 +14,7 @@ export default function CreateJobForm({ onCreated }) {
     pickupTime: "",
     dropoffTime: "",
     priceEur: "",
+    loadWeightTons: "",
     driverId: "",
     truckId: "",
   });
@@ -52,6 +53,9 @@ export default function CreateJobForm({ onCreated }) {
         pickupTime: form.pickupTime,
         dropoffTime: form.dropoffTime,
         priceEur: form.priceEur ? parseFloat(form.priceEur) : null,
+        // Deliberately unvalidated against the truck's capacity — an overloaded
+        // job is a normal save; it just costs more fuel.
+        loadWeightTons: form.loadWeightTons ? parseFloat(form.loadWeightTons) : null,
         driverId: parseInt(form.driverId),
         truckId: parseInt(form.truckId),
       };
@@ -66,6 +70,7 @@ export default function CreateJobForm({ onCreated }) {
         pickupTime: "",
         dropoffTime: "",
         priceEur: "",
+        loadWeightTons: "",
         driverId: "",
         truckId: "",
       });
@@ -144,16 +149,30 @@ export default function CreateJobForm({ onCreated }) {
         </Field>
       </div>
 
-      {/* Price */}
-      <Field label={t("jobs.priceOptional")}>
-        <input
-          className={inputCls}
-          placeholder="0.00"
-          name="priceEur"
-          value={form.priceEur}
-          onChange={handleChange}
-        />
-      </Field>
+      {/* Price + load weight */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label={t("jobs.priceOptional")}>
+          <input
+            className={inputCls}
+            placeholder="0.00"
+            name="priceEur"
+            value={form.priceEur}
+            onChange={handleChange}
+          />
+        </Field>
+        <Field label={t("jobs.loadWeightOptional")}>
+          <input
+            className={inputCls}
+            placeholder="0.0"
+            type="number"
+            step="0.1"
+            min="0"
+            name="loadWeightTons"
+            value={form.loadWeightTons}
+            onChange={handleChange}
+          />
+        </Field>
+      </div>
 
       {/* Driver + Truck */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

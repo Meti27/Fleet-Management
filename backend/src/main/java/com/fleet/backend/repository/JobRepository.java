@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface JobRepository extends JpaRepository<Job, Integer> {
@@ -39,4 +40,7 @@ public interface JobRepository extends JpaRepository<Job, Integer> {
 
     // Jobs assigned to a given driver, soonest pickup first (driver app feed).
     List<Job> findByDriver_IdOrderByPickupTimeAsc(Integer driverId);
+
+    /** The job a truck is currently running, so telemetry can be attributed to it. */
+    Optional<Job> findFirstByTruck_IdAndStatusInOrderByPickupTimeDesc(Integer truckId, List<String> statuses);
 }

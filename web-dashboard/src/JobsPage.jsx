@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchJobs, updateJobStatus, deleteJob } from "./api";
+import { fetchJobs, updateJobStatus, deleteJob, fetchFlaggedJobs } from "./api";
 import CreateJobForm from "./CreateJobForm";
 import EditJobPanel from "./EditJobPanel";
 import JobHistoryPanel from "./JobHistoryPanel";
 import { useT } from "./i18n";
 
-const STATUS_LABELS = ["OPEN", "ASSIGNED", "IN_PROGRESS", "DONE", "CANCELLED"];
+const STATUS_LABELS = ["OPEN", "ASSIGNED", "IN_PROGRESS", "PAUSED", "DONE", "CANCELLED"];
 
 export default function JobsPage() {
   const { t } = useT();
@@ -18,6 +18,8 @@ export default function JobsPage() {
   const [search, setSearch] = useState("");
   const [editingJob, setEditingJob] = useState(null);
   const [historyJob, setHistoryJob] = useState(null);
+  // jobId -> verification verdict, for jobs whose telemetry disagrees with the claim.
+  const [flagged, setFlagged] = useState({});
   const editPanelRef = useRef(null);
 
   // When a job is opened for editing, scroll the panel into view so it doesn't
@@ -33,6 +35,12 @@ export default function JobsPage() {
       setLoading(true);
       const data = await fetchJobs();
       setJobs(data);
+      // One request badges the whole list; verification is only interesting for the
+      // jobs that fail it, so unflagged rows simply show nothing.
+      try {
+        const rows = await fetchFlaggedJobs();
+        setFlagged(Object.fromEntries(rows.map((v) => [v.jobId, v])));
+      } catch { /* verification is advisory — never block the jobs list */ }
       setError("");
     } catch (err) {
       console.error(err);
@@ -140,6 +148,7 @@ export default function JobsPage() {
                   <th className="px-3 py-2.5 font-medium">{t("jobs.truck")}</th>
                   <th className="px-3 py-2.5 font-medium">{t("jobs.status")}</th>
                   <th className="px-3 py-2.5 font-medium">{t("jobs.priceCol")}</th>
+                  <th className="px-3 py-2.5 font-medium">{t("jobs.loadCol")}</th>
                   <th className="px-3 py-2.5 font-medium">{t("common.actions")}</th>
                 </tr>
               </thead>
@@ -172,9 +181,13 @@ export default function JobsPage() {
                     </td>
                     <td className="px-3 py-2.5">
                       <StatusBadge status={job.status} />
+                      <VerifyBadge v={flagged[job.id]} />
                     </td>
                     <td className="px-3 py-2.5 text-slate-300">
                       {job.priceEur != null ? `${Number(job.priceEur).toFixed(2)} €` : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-300">
+                      {job.loadWeightTons != null ? `${job.loadWeightTons} t` : "—"}
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1">
@@ -209,7 +222,10 @@ export default function JobsPage() {
                       {job.pickupLocation} → {job.dropoffLocation}
                     </div>
                   </div>
-                  <StatusBadge status={job.status} />
+                  <div className="flex flex-col items-end gap-1">
+                    <StatusBadge status={job.status} />
+                    <VerifyBadge v={flagged[job.id]} />
+                  </div>
                 </div>
 
                 {/* Details grid */}
@@ -226,6 +242,12 @@ export default function JobsPage() {
                     <div className="text-slate-500 uppercase tracking-wide">{t("jobs.price")}</div>
                     <div className="text-slate-300">
                       {job.priceEur != null ? `${Number(job.priceEur).toFixed(2)} €` : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500 uppercase tracking-wide">{t("jobs.loadCol")}</div>
+                    <div className="text-slate-300">
+                      {job.loadWeightTons != null ? `${job.loadWeightTons} t` : "—"}
                     </div>
                   </div>
                   {job.truck?.model && (
@@ -272,12 +294,33 @@ function StatusBadge({ status }) {
   const cls =
     status === "DONE" ? "bg-emerald-500/20 text-emerald-300" :
     status === "IN_PROGRESS" ? "bg-amber-500/20 text-amber-300" :
+    status === "PAUSED" ? "bg-violet-500/20 text-violet-300" :
     status === "CANCELLED" ? "bg-red-500/20 text-red-300" :
     status === "ASSIGNED" ? "bg-blue-500/20 text-blue-300" :
     "bg-slate-800 text-slate-300";
   return (
     <span className={`inline-flex text-[11px] px-2 py-1 rounded-full whitespace-nowrap font-medium ${cls}`}>
       {t(`status.${status}`)}
+    </span>
+  );
+}
+
+/**
+ * Shown only when the truck's telemetry contradicts (or can't corroborate) what the
+ * driver reported. Absence of a badge means the trip checked out.
+ */
+function VerifyBadge({ v }) {
+  const { t } = useT();
+  if (!v) return null;
+  const suspicious = v.verdict === "SUSPICIOUS";
+  return (
+    <span
+      title={v.reason}
+      className={`mt-1 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium ${
+        suspicious ? "bg-red-500/20 text-red-300" : "bg-slate-700/60 text-slate-400"
+      }`}
+    >
+      {suspicious ? "▲" : "○"} {t(`verify.${v.verdict}`)}
     </span>
   );
 }
@@ -291,7 +334,15 @@ function JobActionButtons({ job, onStatus, onEdit, onDelete, onHistory }) {
           onClick={() => onStatus(job.id, "IN_PROGRESS")}
           className="px-2.5 py-1 text-xs rounded-lg bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 font-medium transition-colors"
         >
-          {t("jobs.start")}
+          {job.status === "PAUSED" ? t("jobs.resume") : t("jobs.start")}
+        </button>
+      )}
+      {job.status === "IN_PROGRESS" && (
+        <button
+          onClick={() => onStatus(job.id, "PAUSED")}
+          className="px-2.5 py-1 text-xs rounded-lg bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 font-medium transition-colors"
+        >
+          {t("jobs.pause")}
         </button>
       )}
       {job.status !== "DONE" && job.status !== "CANCELLED" && (

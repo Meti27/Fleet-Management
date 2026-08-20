@@ -11,6 +11,7 @@ public class JobRequest {
     private LocalDateTime pickupTime;
     private LocalDateTime dropoffTime;
     private BigDecimal priceEur;
+    private Double loadWeightTons;
     private String status;
     private Integer driverId;
     private Integer truckId;
@@ -63,6 +64,12 @@ public class JobRequest {
         this.priceEur = priceEur;
     }
 
+    public Double getLoadWeightTons() {
+        return loadWeightTons;
+    }
+    public void setLoadWeightTons(Double loadWeightTons) {
+        this.loadWeightTons = loadWeightTons;
+    }
     public String getStatus() {
         return status;
     }

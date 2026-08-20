@@ -184,6 +184,11 @@ function TripInfo({ jobId, t }) {
     <div className="mt-2 pt-2 border-t border-slate-200 space-y-0.5 text-xs">
       {row(t("map.distance"), trip.distanceKm != null ? `${trip.distanceKm.toFixed(1)} km` : "—")}
       {row(t("map.avgSpeed"), trip.avgSpeedKph != null ? `${Math.round(trip.avgSpeedKph)} km/h` : "—")}
+      {trip.loadWeightTons != null && row(t("map.load"), `${trip.loadWeightTons} t`)}
+      {trip.effectiveRateL100km != null &&
+        row(t("map.ladenRate"),
+          `${trip.effectiveRateL100km.toFixed(1)} L/100km` +
+            (trip.rateL100km != null ? ` (base ${trip.rateL100km.toFixed(1)})` : ""))}
       {row(t("map.fuelUsed"),
         trip.estimatedLiters != null ? `~${trip.estimatedLiters.toFixed(1)} L` : t("map.noRate"))}
       {trip.estimatedCostEur != null && row(t("map.estCost"), `~€${trip.estimatedCostEur.toFixed(2)}`)}

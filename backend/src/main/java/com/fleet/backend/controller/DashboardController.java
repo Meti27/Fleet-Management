@@ -42,7 +42,7 @@ public class DashboardController {
         long totalJobs = jobs.size();
 
         long activeJobs = jobs.stream()
-                .filter(j -> hasStatus(j, "OPEN", "ASSIGNED", "IN_PROGRESS"))
+                .filter(j -> hasStatus(j, "OPEN", "ASSIGNED", "IN_PROGRESS", "PAUSED"))
                 .count();
         long completedJobs = jobs.stream()
                 .filter(j -> hasStatus(j, "DONE"))
@@ -53,13 +53,13 @@ public class DashboardController {
                 .count();
 
         Set<Integer> busyDriverIds = jobs.stream()
-                .filter(j -> hasStatus(j, "OPEN", "ASSIGNED", "IN_PROGRESS"))
+                .filter(j -> hasStatus(j, "OPEN", "ASSIGNED", "IN_PROGRESS", "PAUSED"))
                 .filter(j -> j.getDriver() != null)
                 .map(j -> j.getDriver().getId())
                 .collect(Collectors.toSet());
 
         Set<Integer> busyTruckIds = jobs.stream()
-                .filter(j -> hasStatus(j, "OPEN", "ASSIGNED", "IN_PROGRESS"))
+                .filter(j -> hasStatus(j, "OPEN", "ASSIGNED", "IN_PROGRESS", "PAUSED"))
                 .filter(j -> j.getTruck() != null)
                 .map(j -> j.getTruck().getId())
                 .collect(Collectors.toSet());

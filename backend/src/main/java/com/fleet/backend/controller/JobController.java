@@ -1,9 +1,11 @@
 package com.fleet.backend.controller;
 
 import com.fleet.backend.dto.JobRequest;
+import com.fleet.backend.dto.JobVerificationDto;
 import com.fleet.backend.entity.Job;
 import com.fleet.backend.entity.JobStatusHistory;
 import com.fleet.backend.service.JobService;
+import com.fleet.backend.service.TripVerificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,9 +17,11 @@ import java.util.List;
 public class JobController {
 
     private final JobService jobService;
+    private final TripVerificationService verificationService;
 
-    public JobController(JobService jobService) {
+    public JobController(JobService jobService, TripVerificationService verificationService) {
         this.jobService = jobService;
+        this.verificationService = verificationService;
     }
     @PreAuthorize("isAuthenticated()")
     @GetMapping
@@ -51,6 +55,20 @@ public class JobController {
         jobService.deleteJob(id);
         return ResponseEntity.ok().build();
     }
+    /** Jobs whose telemetry contradicts (or can't corroborate) the driver's claim. */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/flagged")
+    public List<JobVerificationDto> flagged(@RequestParam(defaultValue = "20") int limit) {
+        return verificationService.flagged(limit);
+    }
+
+    /** Does the truck's own telemetry back up what the driver claimed for this job? */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{id}/verification")
+    public JobVerificationDto verification(@PathVariable Integer id) {
+        return verificationService.verify(id);
+    }
+
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}/history")
     public ResponseEntity<List<JobStatusHistory>> getJobHistory(@PathVariable Integer id) {

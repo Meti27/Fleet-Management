@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useT } from "../i18n";
-import { fetchMyJobs, startJob, finishJob } from "../api";
+import { fetchMyJobs, startJob, pauseJob, resumeJob, finishJob } from "../api";
+import ScanTruckModal from "./ScanTruckModal";
 import DriverHeader from "./DriverHeader";
 import { useDriverLocation } from "./DriverLocationContext";
 import { StatusBadge, fmtDateTime } from "./ui";
@@ -14,6 +15,7 @@ export default function DriverJobsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [scanJob, setScanJob] = useState(null);
 
   async function load() {
     try {
@@ -30,19 +32,27 @@ export default function DriverJobsPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function act(action, jobId) {
+  async function run(jobId, fn, after) {
     setBusyId(jobId);
     try {
-      await action(jobId);
-      // Starting a job begins location sharing tagged to it; finishing stops it.
-      if (action === startJob) startForJob(jobId);
-      if (action === finishJob) stopForJob(jobId);
+      await fn();
+      after?.();
       await load();
     } catch (err) {
       alert(err.message);
     } finally {
       setBusyId(null);
     }
+  }
+
+  // Starting needs proof of presence, so it goes through the scanner first.
+  // Location sharing follows the trip: on while running or paused (so movement
+  // during a pause is still visible), off once the job is finished.
+  async function handleScanned(token) {
+    const job = scanJob;
+    setScanJob(null);
+    if (!job) return;
+    await run(job.id, () => startJob(job.id, token), () => startForJob(job.id));
   }
 
   return (
@@ -83,12 +93,34 @@ export default function DriverJobsPage() {
 
                 <div className="flex gap-2">
                   {job.status === "ASSIGNED" && (
-                    <ActionBtn busy={busyId === job.id} color="amber" onClick={() => act(startJob, job.id)}>
-                      ▶ {t("driver.start")}
+                    <ActionBtn busy={busyId === job.id} color="amber" onClick={() => setScanJob(job)}>
+                      ⛶ {t("driver.scanToStart")}
+                    </ActionBtn>
+                  )}
+                  {job.status === "PAUSED" && (
+                    <ActionBtn
+                      busy={busyId === job.id}
+                      color="amber"
+                      onClick={() => run(job.id, () => resumeJob(job.id), () => startForJob(job.id))}
+                    >
+                      ▶ {t("jobs.resume")}
                     </ActionBtn>
                   )}
                   {job.status === "IN_PROGRESS" && (
-                    <ActionBtn busy={busyId === job.id} color="emerald" onClick={() => act(finishJob, job.id)}>
+                    <ActionBtn
+                      busy={busyId === job.id}
+                      color="violet"
+                      onClick={() => run(job.id, () => pauseJob(job.id))}
+                    >
+                      ‖ {t("jobs.pause")}
+                    </ActionBtn>
+                  )}
+                  {(job.status === "IN_PROGRESS" || job.status === "PAUSED") && (
+                    <ActionBtn
+                      busy={busyId === job.id}
+                      color="emerald"
+                      onClick={() => run(job.id, () => finishJob(job.id), () => stopForJob(job.id))}
+                    >
                       ✓ {t("driver.finish")}
                     </ActionBtn>
                   )}
@@ -104,6 +136,15 @@ export default function DriverJobsPage() {
           </div>
         )}
       </main>
+
+      {scanJob && (
+        <ScanTruckModal
+          expectedPlate={scanJob.truck?.plateNumber}
+          busy={busyId === scanJob.id}
+          onScanned={handleScanned}
+          onCancel={() => setScanJob(null)}
+        />
+      )}
     </div>
   );
 }
@@ -120,6 +161,8 @@ function Meta({ label, value }) {
 function ActionBtn({ children, onClick, busy, color }) {
   const cls = color === "emerald"
     ? "bg-emerald-600 hover:bg-emerald-500"
+    : color === "violet"
+    ? "bg-violet-600 hover:bg-violet-500"
     : "bg-amber-600 hover:bg-amber-500";
   return (
     <button

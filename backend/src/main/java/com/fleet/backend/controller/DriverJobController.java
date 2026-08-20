@@ -2,6 +2,7 @@ package com.fleet.backend.controller;
 
 import com.fleet.backend.dto.DriverLocationDto;
 import com.fleet.backend.dto.LocationPingRequest;
+import com.fleet.backend.dto.StartJobRequest;
 import com.fleet.backend.entity.Job;
 import com.fleet.backend.entity.Notification;
 import com.fleet.backend.service.DriverService;
@@ -39,9 +40,21 @@ public class DriverJobController {
         return driverService.myJobs();
     }
 
+    /** Start a job — requires the QR token scanned from the assigned truck's cab. */
     @PostMapping("/jobs/{id}/start")
-    public ResponseEntity<Job> start(@PathVariable Integer id) {
-        return ResponseEntity.ok(driverService.startJob(id));
+    public ResponseEntity<Job> start(@PathVariable Integer id,
+                                     @RequestBody(required = false) StartJobRequest req) {
+        return ResponseEntity.ok(driverService.startJob(id, req == null ? null : req.truckToken()));
+    }
+
+    @PostMapping("/jobs/{id}/pause")
+    public ResponseEntity<Job> pause(@PathVariable Integer id) {
+        return ResponseEntity.ok(driverService.pauseJob(id));
+    }
+
+    @PostMapping("/jobs/{id}/resume")
+    public ResponseEntity<Job> resume(@PathVariable Integer id) {
+        return ResponseEntity.ok(driverService.resumeJob(id));
     }
 
     @PostMapping("/jobs/{id}/finish")

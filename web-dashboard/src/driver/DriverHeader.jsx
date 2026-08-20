@@ -26,7 +26,7 @@ export default function DriverHeader() {
     fetchUnreadCount().then((d) => setUnread(d.count || 0)).catch(() => {});
   }, []);
 
-  // Poll unread count every 30s (in-app notifications; push comes in Phase 4).
+  // Poll unread count every 30s (in-app notifications; push comes in Phase 5).
   useEffect(() => {
     loadCount();
     const id = setInterval(loadCount, 30000);

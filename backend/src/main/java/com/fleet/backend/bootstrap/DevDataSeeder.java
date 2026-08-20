@@ -3,9 +3,11 @@ package com.fleet.backend.bootstrap;
 import com.fleet.backend.dto.JobRequest;
 import com.fleet.backend.entity.Driver;
 import com.fleet.backend.entity.Job;
+import com.fleet.backend.entity.OdometerReading;
 import com.fleet.backend.entity.Truck;
 import com.fleet.backend.repository.DriverRepository;
 import com.fleet.backend.repository.JobRepository;
+import com.fleet.backend.repository.OdometerReadingRepository;
 import com.fleet.backend.repository.TruckRepository;
 import com.fleet.backend.repository.UserRepository;
 import com.fleet.backend.service.JobService;
@@ -41,14 +43,17 @@ public class DevDataSeeder implements CommandLineRunner {
     private final TruckRepository truckRepo;
     private final UserRepository userRepo;
     private final JobRepository jobRepo;
+    private final OdometerReadingRepository odometerRepo;
     private final JobService jobService;
 
     public DevDataSeeder(DriverRepository driverRepo, TruckRepository truckRepo,
-                         UserRepository userRepo, JobRepository jobRepo, JobService jobService) {
+                         UserRepository userRepo, JobRepository jobRepo,
+                         OdometerReadingRepository odometerRepo, JobService jobService) {
         this.driverRepo = driverRepo;
         this.truckRepo = truckRepo;
         this.userRepo = userRepo;
         this.jobRepo = jobRepo;
+        this.odometerRepo = odometerRepo;
         this.jobService = jobService;
     }
 
@@ -83,10 +88,34 @@ public class DevDataSeeder implements CommandLineRunner {
             ));
         }
 
+        seedOdometerBaselines();
+
         Driver linked = linkDriverLogin();
 
         if (jobRepo.count() == 0) {
             seedJobs(linked);
+        }
+    }
+
+    /**
+     * Give each truck a starting odometer reading.
+     *
+     * <p>Needed because mileage accrues as a <em>delta</em>: telemetry knows how far a
+     * truck went on a trip, not what its odometer reads. Without a baseline to add to,
+     * completed trips can't move "current km" and every km-based maintenance reminder
+     * stays dormant.</p>
+     */
+    private void seedOdometerBaselines() {
+        if (odometerRepo.count() > 0) return;
+        Random rnd = new Random(11);
+        for (Truck truck : truckRepo.findAll()) {
+            odometerRepo.save(OdometerReading.builder()
+                    .truck(truck)
+                    .readingKm(120_000 + rnd.nextInt(180_000))
+                    .recordedAt(LocalDateTime.now().minusDays(1))
+                    .source("MANUAL")
+                    .note("Fleet onboarding baseline")
+                    .build());
         }
     }
 
@@ -132,6 +161,7 @@ public class DevDataSeeder implements CommandLineRunner {
             req.setPickupTime(pickup);
             req.setDropoffTime(pickup.plusHours(3));
             req.setPriceEur(new BigDecimal("250.00"));
+            req.setLoadWeightTons(18.5);
             req.setDriverId(linked.getId());
             req.setTruckId(trucks.get(0).getId());
             jobService.createJob(req);
@@ -152,6 +182,7 @@ public class DevDataSeeder implements CommandLineRunner {
                     .title("Cargo " + route[0] + " → " + route[1])
                     .pickupLocation(route[0]).dropoffLocation(route[1])
                     .pickupTime(pickup).dropoffTime(pickup.plusHours(durationH))
+                    .loadWeightTons(loadTons(rnd))
                     .priceEur(BigDecimal.valueOf(price))
                     .status("DONE")
                     .driver(drivers.get(rnd.nextInt(drivers.size())))
@@ -168,6 +199,7 @@ public class DevDataSeeder implements CommandLineRunner {
                     .title("Cargo " + route[0] + " → " + route[1])
                     .pickupLocation(route[0]).dropoffLocation(route[1])
                     .pickupTime(pickup).dropoffTime(pickup.plusHours(3))
+                    .loadWeightTons(loadTons(rnd))
                     .priceEur(BigDecimal.valueOf(150 + rnd.nextInt(30) * 10))
                     .status("CANCELLED")
                     .driver(drivers.get(rnd.nextInt(drivers.size())))
@@ -182,14 +214,20 @@ public class DevDataSeeder implements CommandLineRunner {
             LocalDateTime pickup = now.withHour(8 + i * 3).withMinute(0).withSecond(0).withNano(0);
             String[] route = route(rnd);
             boolean open = todayStatuses[i].equals("OPEN");
+            // Pin the IN_PROGRESS one to the last truck (TE-1006-AA), which the
+            // telemetry simulator holds stationary — that combination is what makes
+            // the "claimed underway but the vehicle never moved" alert visible in
+            // the demo without waiting for a driver to actually fake one.
+            Truck todayTruck = i == 0 ? trucks.get(trucks.size() - 1) : trucks.get(rnd.nextInt(trucks.size()));
             batch.add(Job.builder()
                     .title("Cargo " + route[0] + " → " + route[1])
                     .pickupLocation(route[0]).dropoffLocation(route[1])
                     .pickupTime(pickup).dropoffTime(pickup.plusHours(2 + i))
+                    .loadWeightTons(loadTons(rnd))
                     .priceEur(BigDecimal.valueOf(200 + rnd.nextInt(30) * 10))
                     .status(todayStatuses[i])
                     .driver(open ? null : drivers.get(1 + rnd.nextInt(drivers.size() - 1)))
-                    .truck(open ? null : trucks.get(rnd.nextInt(trucks.size())))
+                    .truck(open ? null : todayTruck)
                     .createAt(now.minusDays(1))
                     .build());
         }
@@ -203,6 +241,7 @@ public class DevDataSeeder implements CommandLineRunner {
                     .title("Cargo " + route[0] + " → " + route[1])
                     .pickupLocation(route[0]).dropoffLocation(route[1])
                     .pickupTime(pickup).dropoffTime(pickup.plusHours(2 + rnd.nextInt(4)))
+                    .loadWeightTons(loadTons(rnd))
                     .priceEur(BigDecimal.valueOf(180 + rnd.nextInt(40) * 10))
                     .status(assigned ? "ASSIGNED" : "OPEN")
                     .driver(assigned ? drivers.get(rnd.nextInt(drivers.size())) : null)
@@ -212,6 +251,15 @@ public class DevDataSeeder implements CommandLineRunner {
         }
 
         jobRepo.saveAll(batch);
+    }
+
+    /**
+     * A plausible payload in tonnes. The range deliberately runs past the fleet's
+     * 22–28 t capacities so the demo contains genuinely overloaded jobs — the client
+     * requires those to save normally, and the fuel model simply charges more for them.
+     */
+    private static double loadTons(Random rnd) {
+        return Math.round((8 + rnd.nextDouble() * 22) * 10) / 10.0;
     }
 
     /** A random distinct from/to city pair. */

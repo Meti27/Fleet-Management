@@ -48,9 +48,16 @@ public class DriverController {
                 .map(existing -> {
                     existing.setName(updated.getName());
                     existing.setPhone(updated.getPhone());
-                    existing.setEmail(updated.getEmail());
-                    existing.setStatus(updated.getStatus());
                     existing.setLicenseNumber(updated.getLicenseNumber());
+                    // email and status aren't part of the driver edit form, so they
+                    // arrive null on a normal edit — only overwrite when the client
+                    // actually sends a value, instead of wiping the stored one.
+                    if (updated.getEmail() != null) {
+                        existing.setEmail(updated.getEmail());
+                    }
+                    if (updated.getStatus() != null) {
+                        existing.setStatus(updated.getStatus());
+                    }
                     return ResponseEntity.ok(driverRepository.save(existing));
                 })
                 .orElse(ResponseEntity.notFound().build());

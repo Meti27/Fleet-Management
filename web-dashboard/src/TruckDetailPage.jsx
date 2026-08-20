@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useT } from "./i18n";
 import {
@@ -8,11 +8,12 @@ import {
   fetchOdometer, addOdometer,
   fetchDocuments, addDocument, deleteDocument,
   fetchSchedules, upsertSchedule, deleteSchedule,
+  fetchTruckQr, regenerateTruckQr,
 } from "./api";
 
 const MAINT_TYPES = ["OIL_CHANGE", "TIRE_REPLACEMENT", "TIRE_REPAIR", "BRAKES", "INSPECTION", "REPAIR", "OTHER"];
 const DOC_TYPES = ["REGISTRATION", "INSURANCE", "INSPECTION", "OTHER"];
-const TABS = ["Fuel", "Maintenance", "Odometer", "Documents", "Schedules"];
+const TABS = ["Fuel", "Maintenance", "Odometer", "Documents", "Schedules", "Qr"];
 
 export default function TruckDetailPage() {
   const { id } = useParams();
@@ -97,6 +98,7 @@ export default function TruckDetailPage() {
       {tab === "Odometer" && <OdometerTab truckId={id} onChange={reload} />}
       {tab === "Documents" && <DocumentsTab truckId={id} onChange={reload} />}
       {tab === "Schedules" && <SchedulesTab truckId={id} onChange={reload} />}
+      {tab === "Qr" && <QrTab truckId={id} plateNumber={truck.plateNumber} />}
     </div>
   );
 }
@@ -333,6 +335,122 @@ function SchedulesTab({ truckId, onChange }) {
     </Section>
   );
 }
+
+/* ------------------------------ Cab QR --------------------------- */
+/**
+ * The QR sticker that goes in the cab. Drivers must scan it to start a job, which
+ * is what proves they are physically at the vehicle.
+ *
+ * The token is fetched from an ADMIN/DISPATCHER-only endpoint — it is @JsonIgnore'd
+ * on the Truck entity precisely so it never reaches a driver through ordinary truck
+ * payloads. The QR image is rendered client-side from a lazy-loaded library, so
+ * nothing is added to the main bundle and the backend does no image work.
+ */
+function QrTab({ truckId, plateNumber }) {
+  const { t } = useT();
+  const [token, setToken] = useState("");
+  const [dataUrl, setDataUrl] = useState("");
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    fetchTruckQr(truckId)
+      .then((d) => { setToken(d.qrToken); setError(""); })
+      .catch(() => setError(t("trucks.qrFailed")));
+  }, [truckId, t]);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    let active = true;
+    (async () => {
+      const QRCode = (await import("qrcode")).default;
+      const png = await QRCode.toDataURL(qrUrl(token), {
+        width: 320, margin: 1, errorCorrectionLevel: "M",
+      });
+      if (active) setDataUrl(png);
+    })().catch(() => { if (active) setError(t("trucks.qrFailed")); });
+    return () => { active = false; };
+  }, [token, t]);
+
+  async function regenerate() {
+    if (!window.confirm(t("trucks.qrRegenerateConfirm", { plate: plateNumber }))) return;
+    try {
+      const d = await regenerateTruckQr(truckId);
+      setDataUrl("");
+      setToken(d.qrToken);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  function printSticker() {
+    if (!dataUrl) return;
+    const w = window.open("", "_blank", "width=460,height=620");
+    if (!w) { alert(t("trucks.qrPrintBlocked")); return; }
+    // Print only once the image has actually decoded, or the sheet comes out blank.
+    w.document.write(
+      '<!doctype html><meta charset="utf-8"><title>' + escapeHtml(plateNumber) + '</title>' +
+      '<body style="font-family:system-ui,sans-serif;text-align:center;padding:28px;margin:0">' +
+      '<h1 style="font-size:26px;margin:0 0 2px">' + escapeHtml(plateNumber) + '</h1>' +
+      '<p style="font-size:13px;color:#555;margin:0 0 18px">' + escapeHtml(t("trucks.qrStickerCaption")) + '</p>' +
+      '<img src="' + dataUrl + '" style="width:320px;height:320px" onload="window.print()">' +
+      '<p style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;color:#666;' +
+      'word-break:break-all;max-width:320px;margin:14px auto 0">' + escapeHtml(grouped(token)) + '</p>' +
+      '</body>'
+    );
+    w.document.close();
+  }
+
+  if (error) return <Section><p className="text-sm text-red-400">{error}</p></Section>;
+
+  return (
+    <Section>
+      <div>
+        <h2 className="text-sm font-semibold text-slate-100">{t("trucks.qrTitle")}</h2>
+        <p className="text-xs text-slate-500 mt-0.5">{t("trucks.qrHint")}</p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+        <div className="bg-white rounded-xl p-3 self-start">
+          {dataUrl
+            ? <img src={dataUrl} alt={`QR ${plateNumber}`} className="w-44 h-44 block" />
+            : <div className="w-44 h-44 flex items-center justify-center text-slate-400 text-xs">
+                {t("common.loading")}
+              </div>}
+        </div>
+
+        <div className="flex-1 space-y-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
+              {t("trucks.qrCodeLabel")}
+            </div>
+            {/* Printed under the QR so a driver whose camera is blocked can type it. */}
+            <code className="text-xs text-slate-300 break-all font-mono">{grouped(token)}</code>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={printSticker} disabled={!dataUrl} className={btnCls + " disabled:opacity-50"}>
+              {t("trucks.qrPrint")}
+            </button>
+            <button
+              onClick={regenerate}
+              className="px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-300 text-sm font-medium h-[38px]"
+            >
+              {t("trucks.qrRegenerate")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/** What the QR encodes — a URL, so a generic camera app does something sensible too. */
+const qrUrl = (token) => `${window.location.origin}/t/${token}`;
+/** Chunked for legibility when typed by hand off the printed sticker. */
+const grouped = (token) => (token || "").replace(/(.{4})/g, "$1 ").trim();
+const escapeHtml = (v) =>
+  String(v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 /* --------------------------- shared UI -------------------------- */
 const inputCls = "w-full px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500";

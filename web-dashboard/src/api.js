@@ -20,13 +20,18 @@ async function handleError(res, fallbackMessage) {
     throw new Error(fallbackMessage);
   }
 
+  // Prefer the API's own message (ApiError.message); fall back to the raw body
+  // when the response isn't JSON. Note the throw must happen *after* the
+  // try/catch — throwing inside it would be swallowed by its own catch.
+  let message = text;
   try {
     const data = JSON.parse(text);
-    const msg = data.detail || data.message || data.error || fallbackMessage;
-    throw new Error(msg);
+    message = data.detail || data.message || data.error || fallbackMessage;
   } catch {
-    throw new Error(text || fallbackMessage);
+    // not JSON — keep the raw text
   }
+
+  throw new Error(message || fallbackMessage);
 }
 
 export async function login(username, password) {
@@ -129,6 +134,21 @@ export async function updateJobStatus(jobId, status) {
   );
 
   if (!res.ok) await handleError(res, "Failed to update status");
+  return res.json();
+}
+
+// Trip verification: does the truck's own telemetry back up the driver's claim?
+// The flagged list is one request for the whole fleet, so pages can badge many jobs
+// without issuing a call per row.
+export async function fetchFlaggedJobs(limit = 100) {
+  const res = await fetch(`${API_BASE}/jobs/flagged?limit=${limit}`, { headers: authHeaders() });
+  if (!res.ok) await handleError(res, "Failed to load trip verification");
+  return res.json();
+}
+
+export async function fetchJobVerification(jobId) {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/verification`, { headers: authHeaders() });
+  if (!res.ok) await handleError(res, "Failed to verify job");
   return res.json();
 }
 
@@ -258,6 +278,13 @@ export const addDocument = (id, data) =>
 export const deleteDocument = (id, docId) =>
   apiDelete(`/trucks/${id}/documents/${docId}`, "Failed to delete document");
 
+// Cab QR sticker (ADMIN/DISPATCHER only — the token is @JsonIgnore'd on the entity
+// so it never leaks through the ordinary truck payloads drivers can read).
+export const fetchTruckQr = (id) =>
+  apiGet(`/trucks/${id}/qr`, "Failed to load QR code");
+export const regenerateTruckQr = (id) =>
+  apiPost(`/trucks/${id}/qr/regenerate`, {}, "Failed to regenerate QR code");
+
 export const fetchSchedules = (id) =>
   apiGet(`/trucks/${id}/schedules`, "Failed to load schedules");
 export const upsertSchedule = (id, data) =>
@@ -271,8 +298,14 @@ export const deleteSchedule = (id, schedId) =>
 
 export const fetchMyJobs = () =>
   apiGet(`/driver/me/jobs`, "Failed to load your jobs");
-export const startJob = (id) =>
-  apiPost(`/driver/jobs/${id}/start`, {}, "Failed to start job");
+// Starting requires the QR token scanned from the assigned truck's cab (proof of
+// presence); pause/resume/finish are plain taps.
+export const startJob = (id, truckToken) =>
+  apiPost(`/driver/jobs/${id}/start`, { truckToken }, "Failed to start job");
+export const pauseJob = (id) =>
+  apiPost(`/driver/jobs/${id}/pause`, {}, "Failed to pause job");
+export const resumeJob = (id) =>
+  apiPost(`/driver/jobs/${id}/resume`, {}, "Failed to resume job");
 export const finishJob = (id) =>
   apiPost(`/driver/jobs/${id}/finish`, {}, "Failed to finish job");
 

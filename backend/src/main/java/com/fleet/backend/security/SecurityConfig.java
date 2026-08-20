@@ -51,6 +51,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/health").permitAll()              // ✅ public health check
                         .requestMatchers("/ws/**").permitAll()                   // ✅ STOMP handshake; CONNECT is JWT-authed in StompAuthChannelInterceptor
+                        // Truck telemetry uploads: the device is a box, not a user, so it
+                        // carries an X-Device-Key instead of a JWT. TelemetryService
+                        // validates it and 401s on an unknown key. POST only — the read
+                        // side (/api/telemetry/latest) stays behind normal authentication.
+                        .requestMatchers(HttpMethod.POST, "/api/telemetry").permitAll()
                         .anyRequest().authenticated()
                 );
 
